@@ -1,0 +1,31 @@
+{
+  "name": "impress",
+  "module": "src/server.ts",
+  "type": "module",
+  "scripts": {
+    "start": "bun run src/server.ts",
+    "dev": "bun run --watch src/server.ts",
+    "up": "npx npm-check-updates --interactive --format group"
+  },
+  "devDependencies": {
+    "@types/html-to-text": "^9.0.2",
+    "@types/mjml": "^4.7.2",
+    "bun-types": "latest",
+    "@types/react": "^18.2.28"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "@elysiajs/bearer": "^0.7.0",
+    "@elysiajs/swagger": "^0.7.3",
+    "@faire/mjml-react": "4.0.0-main-alpha.2",
+    "@react-pdf/renderer": "^3.1.13",
+    "elysia": "^0.7.16",
+    "html-to-text": "^9.0.5",
+    "mjml": "^4.14.1",
+    "react": "^18.2.0",
+    "zod": "^3.22.4",
+    "sharp": "0.33.0-alpha.6"
+  }
+}
