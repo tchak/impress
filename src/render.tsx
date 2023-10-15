@@ -28,23 +28,25 @@ const styles = ReactPDF.StyleSheet.create({
     paddingHorizontal: 35,
     fontFamily: 'Helvetica',
     display: 'flex',
-    gap: 30,
   },
   vsection: {
     display: 'flex',
     flexDirection: 'column',
     justifyContent: 'flex-start',
-    gap: 30,
+    gap: 10,
+    paddingBottom: 30,
   },
   hsection: {
     display: 'flex',
     flexDirection: 'row',
-    gap: 30,
   },
-  paragraph: {
+  text: {
     lineHeight: 1.4,
     fontSize: 12,
     fontFamily: 'Helvetica',
+  },
+  paragraph: {
+    paddingBottom: 30,
   },
   h1: {
     fontWeight: 'bold',
@@ -81,6 +83,8 @@ const styles = ReactPDF.StyleSheet.create({
     display: 'flex',
     flexDirection: 'row',
     width: '100%',
+    gap: 5,
+    paddingBottom: 2,
   },
   bullet: {
     marginTop: 6,
@@ -340,7 +344,11 @@ function Paragraph({
   ));
   switch (format) {
     case 'pdf':
-      return <ReactPDF.Text style={styles.paragraph}>{children}</ReactPDF.Text>;
+      return (
+        <ReactPDF.Text style={[styles.text, styles.paragraph]}>
+          {children}
+        </ReactPDF.Text>
+      );
     case 'mjml':
       return (
         <MjmlText align={align} lineHeight="1.2" padding="0">
@@ -367,7 +375,7 @@ function ListItem({
       return <li>{children}</li>;
     case 'pdf':
       return (
-        <ReactPDF.View style={[styles.listItem, styles.paragraph]}>
+        <ReactPDF.View style={[styles.listItem, styles.text]}>
           <ReactPDF.View style={styles.bullet}>
             <ReactPDF.Svg width={2} height={2}>
               <ReactPDF.Circle cx="1" cy="1" r="2" fill="#ccc" />
@@ -496,6 +504,7 @@ function Text({
   format: RenderFormat;
 }) {
   const textDecoration = node.underline ? 'underline' : undefined;
+  const backgroundColor = node.highlight ? '#ff0' : undefined;
   const fontFamily =
     node.bold && node.italic
       ? 'Helvetica-BoldOblique'
@@ -504,7 +513,6 @@ function Text({
       : node.italic
       ? 'Helvetica-Oblique'
       : 'Helvetica';
-  const backgroundColor = node.highlight ? '#ff0' : undefined;
 
   switch (format) {
     case 'pdf':
