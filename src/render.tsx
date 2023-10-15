@@ -12,7 +12,7 @@ import {
 import { renderToMjml } from '@faire/mjml-react/utils/renderToMjml';
 import { htmlToText } from 'html-to-text';
 import mjmlToHTML from 'mjml';
-import type { ReactNode } from 'react';
+import { type ReactNode, createContext, useContext } from 'react';
 import sharp from 'sharp';
 
 import * as d from './document';
@@ -91,6 +91,16 @@ const styles = ReactPDF.StyleSheet.create({
   },
 });
 
+const DocumentContext = createContext<{
+  format: RenderFormat;
+  tags: d.Tags;
+  cache: Cache;
+}>({
+  format: 'mjml',
+  tags: [],
+  cache: {},
+});
+
 export async function renderDocument(
   document: d.Document,
   tags: d.Tags,
@@ -132,78 +142,56 @@ export function Document({
 }) {
   const language = node.language ?? 'en';
   const children = node.children.map((child, index) => (
-    <Section
-      key={index}
-      parent="document"
-      node={child}
-      tags={tags}
-      cache={cache}
-      format={format}
-    />
+    <Section key={index} parent="document" node={child} />
   ));
   switch (format) {
     case 'pdf':
       return (
-        <ReactPDF.Document language={language} title={node.title}>
-          <ReactPDF.Page size="A4" style={styles.page}>
-            {children}
-            <ReactPDF.Text
-              style={styles.pageNumbers}
-              render={({ pageNumber, totalPages }) =>
-                `${pageNumber} / ${totalPages}`
-              }
-              fixed
-            />
-          </ReactPDF.Page>
-        </ReactPDF.Document>
+        <DocumentContext.Provider value={{ format, tags, cache }}>
+          <ReactPDF.Document language={language} title={node.title}>
+            <ReactPDF.Page size="A4" style={styles.page}>
+              {children}
+              <ReactPDF.Text
+                style={styles.pageNumbers}
+                render={({ pageNumber, totalPages }) =>
+                  `${pageNumber} / ${totalPages}`
+                }
+                fixed
+              />
+            </ReactPDF.Page>
+          </ReactPDF.Document>
+        </DocumentContext.Provider>
       );
     case 'mjml':
       return (
-        <Mjml lang={language}>
-          <MjmlHead>
-            <MjmlTitle>{node.title}</MjmlTitle>
-          </MjmlHead>
-          <MjmlBody width="700px">{children}</MjmlBody>
-        </Mjml>
+        <DocumentContext.Provider value={{ format, tags, cache }}>
+          <Mjml lang={language}>
+            <MjmlHead>
+              <MjmlTitle>{node.title}</MjmlTitle>
+            </MjmlHead>
+            <MjmlBody width="700px">{children}</MjmlBody>
+          </Mjml>
+        </DocumentContext.Provider>
       );
   }
 }
 
 function Section({
   node,
-  tags,
-  cache,
   parent,
-  format,
 }: {
   node: d.Section;
-  tags: d.Tags;
-  cache: Cache;
-  format: RenderFormat;
   parent: 'document' | 'section';
 }) {
+  const { format } = useContext(DocumentContext);
   const isHorizontal = node.direction == 'horizontal';
   const textAlign = isHorizontal ? undefined : node.align ?? 'left';
   const children = isHorizontal
     ? node.children.map((child, index) => (
-        <Section
-          key={index}
-          parent="section"
-          node={child}
-          tags={tags}
-          cache={cache}
-          format={format}
-        />
+        <Section key={index} parent="section" node={child} />
       ))
     : node.children.map((child, index) => (
-        <Block
-          key={index}
-          align={textAlign}
-          node={child}
-          tags={tags}
-          cache={cache}
-          format={format}
-        />
+        <Block key={index} align={textAlign} node={child} />
       ));
 
   switch (format) {
@@ -237,52 +225,37 @@ function Section({
   }
 }
 
-function Block({
-  node,
-  tags,
-  cache,
-  align,
-  format,
-}: {
-  node: d.Block;
-  tags: d.Tags;
-  cache: Cache;
-  align?: Align;
-  format: RenderFormat;
-}) {
+function Block({ node, align }: { node: d.Block; align?: Align }) {
   switch (node.type) {
     case 'paragraph':
-      return (
-        <Paragraph node={node} tags={tags} align={align} format={format} />
-      );
+      return <Paragraph node={node} align={align} />;
     case 'heading':
-      return <Heading node={node} tags={tags} align={align} format={format} />;
+      return <Heading node={node} align={align} />;
     case 'numbered-list':
-      return (
-        <NumberedList node={node} tags={tags} align={align} format={format} />
-      );
+      return <NumberedList node={node} align={align} />;
     case 'bulleted-list':
-      return (
-        <BulletedList node={node} tags={tags} align={align} format={format} />
-      );
+      return <BulletedList node={node} align={align} />;
     case 'image':
-      return <Image node={node} cache={cache} align={align} format={format} />;
+      return <Image node={node} align={align} />;
   }
 }
 
-function Heading({
-  node,
-  tags,
-  align,
-  format,
-}: {
-  node: d.Heading;
-  tags: d.Tags;
-  align?: Align;
-  format: RenderFormat;
-}) {
+function Inline({ node }: { node: d.Inline }) {
+  if ('text' in node) {
+    return <Text node={node} />;
+  }
+  switch (node.type) {
+    case 'link':
+      return <Link node={node} />;
+    case 'tag':
+      return <Tag node={node} />;
+  }
+}
+
+function Heading({ node, align }: { node: d.Heading; align?: Align }) {
+  const { format } = useContext(DocumentContext);
   const children = node.children.map((child, index) => (
-    <Inline key={index} node={child} tags={tags} format={format} />
+    <Inline key={index} node={child} />
   ));
   switch (format) {
     case 'pdf':
@@ -297,6 +270,168 @@ function Heading({
           <HTMLHeading level={node.level}>{children}</HTMLHeading>
         </MjmlText>
       );
+  }
+}
+
+function Paragraph({ node, align }: { node: d.Paragraph; align?: Align }) {
+  const { format } = useContext(DocumentContext);
+  const children = node.children.map((child, index) => (
+    <Inline key={index} node={child} />
+  ));
+  switch (format) {
+    case 'pdf':
+      return (
+        <ReactPDF.Text style={[styles.text, styles.paragraph]}>
+          {children}
+        </ReactPDF.Text>
+      );
+    case 'mjml':
+      return (
+        <MjmlText align={align} lineHeight="1.2" padding="0">
+          <p>{children}</p>
+        </MjmlText>
+      );
+  }
+}
+
+function ListItem({ node }: { node: d.ListItem }) {
+  const { format } = useContext(DocumentContext);
+  const children = node.children.map((child, index) => (
+    <Inline key={index} node={child} />
+  ));
+  switch (format) {
+    case 'mjml':
+      return <li>{children}</li>;
+    case 'pdf':
+      return (
+        <ReactPDF.View style={[styles.listItem, styles.text]}>
+          <ReactPDF.View style={styles.bullet}>
+            <ReactPDF.Svg width={2} height={2}>
+              <ReactPDF.Circle cx="1" cy="1" r="2" fill="#ccc" />
+            </ReactPDF.Svg>
+          </ReactPDF.View>
+          {children}
+        </ReactPDF.View>
+      );
+  }
+}
+
+function NumberedList({
+  node,
+  align,
+}: {
+  node: d.NumberedList;
+  align?: Align;
+}) {
+  const { format } = useContext(DocumentContext);
+  const children = node.children.map((child, index) => (
+    <ListItem key={index} node={child} />
+  ));
+  switch (format) {
+    case 'pdf':
+      return <ReactPDF.View style={styles.list}>{children}</ReactPDF.View>;
+    case 'mjml':
+      return (
+        <MjmlText align={align} padding="0">
+          <ol>{children}</ol>
+        </MjmlText>
+      );
+  }
+}
+
+function BulletedList({
+  node,
+  align,
+}: {
+  node: d.BulletedList;
+  align?: Align;
+}) {
+  const { format } = useContext(DocumentContext);
+  const children = node.children.map((child, index) => (
+    <ListItem key={index} node={child} />
+  ));
+  switch (format) {
+    case 'pdf':
+      return <ReactPDF.View style={styles.list}>{children}</ReactPDF.View>;
+    case 'mjml':
+      return (
+        <MjmlText align={align} padding="0">
+          <ul>{children}</ul>
+        </MjmlText>
+      );
+  }
+}
+
+function Image({ node, align }: { node: d.Image; align?: Align }) {
+  const { format, cache } = useContext(DocumentContext);
+  switch (format) {
+    case 'pdf':
+      return (
+        <ReactPDF.Image
+          src={cache[node.src] ?? node.src}
+          style={{ width: node.width }}
+        />
+      );
+    case 'mjml':
+      return (
+        <MjmlImage
+          src={node.src}
+          padding="0"
+          width={node.width}
+          height={node.height}
+          align={align == 'justify' ? 'center' : align}
+          alt={node.alt ?? ''}
+        />
+      );
+  }
+}
+
+function Text({ node }: { node: d.FormattedText }) {
+  const { format } = useContext(DocumentContext);
+  const textDecoration = node.underline ? 'underline' : undefined;
+  const backgroundColor = node.highlight ? '#ff0' : undefined;
+  const fontFamily =
+    node.bold && node.italic
+      ? 'Helvetica-BoldOblique'
+      : node.bold
+      ? 'Helvetica-Bold'
+      : node.italic
+      ? 'Helvetica-Oblique'
+      : 'Helvetica';
+
+  switch (format) {
+    case 'pdf':
+      return (
+        <ReactPDF.Text style={{ fontFamily, textDecoration, backgroundColor }}>
+          {node.text}
+        </ReactPDF.Text>
+      );
+    case 'mjml':
+      return <TextLines node={node} />;
+  }
+}
+
+function Link({ node }: { node: d.Link }) {
+  const { format } = useContext(DocumentContext);
+  const children = node.children.map((child, index) => (
+    <Inline key={index} node={child} />
+  ));
+  switch (format) {
+    case 'pdf':
+      return <ReactPDF.Link src={node.href}>{children}</ReactPDF.Link>;
+    case 'mjml':
+      return <a href={node.href}>{children}</a>;
+  }
+}
+
+function Tag({ node }: { node: d.Tag }) {
+  const { tags, format } = useContext(DocumentContext);
+  const value = tags.find((tag) => tag.tag == node.tag)?.value ?? '';
+  switch (format) {
+    case 'pdf':
+      return value;
+    case 'mjml':
+      return value;
   }
 }
 
@@ -325,137 +460,6 @@ function HTMLHeading({
       return <h2>{children}</h2>;
     case 3:
       return <h3>{children}</h3>;
-  }
-}
-
-function Paragraph({
-  node,
-  tags,
-  align,
-  format,
-}: {
-  node: d.Paragraph;
-  tags: d.Tags;
-  align?: Align;
-  format: RenderFormat;
-}) {
-  const children = node.children.map((child, index) => (
-    <Inline key={index} node={child} tags={tags} format={format} />
-  ));
-  switch (format) {
-    case 'pdf':
-      return (
-        <ReactPDF.Text style={[styles.text, styles.paragraph]}>
-          {children}
-        </ReactPDF.Text>
-      );
-    case 'mjml':
-      return (
-        <MjmlText align={align} lineHeight="1.2" padding="0">
-          <p>{children}</p>
-        </MjmlText>
-      );
-  }
-}
-
-function ListItem({
-  node,
-  tags,
-  format,
-}: {
-  node: d.ListItem;
-  tags: d.Tags;
-  format: RenderFormat;
-}) {
-  const children = node.children.map((child, index) => (
-    <Inline key={index} node={child} tags={tags} format={format} />
-  ));
-  switch (format) {
-    case 'mjml':
-      return <li>{children}</li>;
-    case 'pdf':
-      return (
-        <ReactPDF.View style={[styles.listItem, styles.text]}>
-          <ReactPDF.View style={styles.bullet}>
-            <ReactPDF.Svg width={2} height={2}>
-              <ReactPDF.Circle cx="1" cy="1" r="2" fill="#ccc" />
-            </ReactPDF.Svg>
-          </ReactPDF.View>
-          {children}
-        </ReactPDF.View>
-      );
-  }
-}
-
-function NumberedList({
-  node,
-  tags,
-  align,
-  format,
-}: {
-  node: d.NumberedList;
-  tags: d.Tags;
-  align?: Align;
-  format: RenderFormat;
-}) {
-  const children = node.children.map((child, index) => (
-    <ListItem key={index} node={child} tags={tags} format={format} />
-  ));
-  switch (format) {
-    case 'pdf':
-      return <ReactPDF.View style={styles.list}>{children}</ReactPDF.View>;
-    case 'mjml':
-      return (
-        <MjmlText align={align} padding="0">
-          <ol>{children}</ol>
-        </MjmlText>
-      );
-  }
-}
-
-function BulletedList({
-  node,
-  tags,
-  align,
-  format,
-}: {
-  node: d.BulletedList;
-  tags: d.Tags;
-  align?: Align;
-  format: RenderFormat;
-}) {
-  const children = node.children.map((child, index) => (
-    <ListItem key={index} node={child} tags={tags} format={format} />
-  ));
-  switch (format) {
-    case 'pdf':
-      return <ReactPDF.View style={styles.list}>{children}</ReactPDF.View>;
-    case 'mjml':
-      return (
-        <MjmlText align={align} padding="0">
-          <ul>{children}</ul>
-        </MjmlText>
-      );
-  }
-}
-
-function Inline({
-  node,
-  tags,
-  format,
-}: {
-  node: d.Inline;
-  tags: d.Tags;
-  format: RenderFormat;
-}) {
-  if ('text' in node) {
-    return <Text node={node} format={format} />;
-  }
-  switch (node.type) {
-    case 'link':
-      return <Link node={node} tags={tags} format={format} />;
-    case 'tag':
-      return <Tag node={node} tags={tags} format={format} />;
   }
 }
 
@@ -496,107 +500,6 @@ function TextLines({ node }: { node: d.FormattedText }) {
   return text;
 }
 
-function Text({
-  node,
-  format,
-}: {
-  node: d.FormattedText;
-  format: RenderFormat;
-}) {
-  const textDecoration = node.underline ? 'underline' : undefined;
-  const backgroundColor = node.highlight ? '#ff0' : undefined;
-  const fontFamily =
-    node.bold && node.italic
-      ? 'Helvetica-BoldOblique'
-      : node.bold
-      ? 'Helvetica-Bold'
-      : node.italic
-      ? 'Helvetica-Oblique'
-      : 'Helvetica';
-
-  switch (format) {
-    case 'pdf':
-      return (
-        <ReactPDF.Text style={{ fontFamily, textDecoration, backgroundColor }}>
-          {node.text}
-        </ReactPDF.Text>
-      );
-    case 'mjml':
-      return <TextLines node={node} />;
-  }
-}
-
-function Link({
-  node,
-  tags,
-  format,
-}: {
-  node: d.Link;
-  tags: d.Tags;
-  format: RenderFormat;
-}) {
-  const children = node.children.map((child, index) => (
-    <Inline key={index} node={child} tags={tags} format={format} />
-  ));
-  switch (format) {
-    case 'pdf':
-      return <ReactPDF.Link src={node.href}>{children}</ReactPDF.Link>;
-    case 'mjml':
-      return <a href={node.href}>{children}</a>;
-  }
-}
-
-function Tag({
-  node,
-  tags,
-  format,
-}: {
-  node: d.Tag;
-  tags: d.Tags;
-  format: RenderFormat;
-}) {
-  const value = tags.find((tag) => tag.tag == node.tag)?.value ?? '';
-  switch (format) {
-    case 'pdf':
-      return value;
-    case 'mjml':
-      return value;
-  }
-}
-
-function Image({
-  node,
-  cache,
-  align,
-  format,
-}: {
-  node: d.Image;
-  cache: Cache;
-  align?: Align;
-  format: RenderFormat;
-}) {
-  switch (format) {
-    case 'pdf':
-      return (
-        <ReactPDF.Image
-          src={cache[node.src] ?? node.src}
-          style={{ width: node.width }}
-        />
-      );
-    case 'mjml':
-      return (
-        <MjmlImage
-          src={node.src}
-          padding="0"
-          width={node.width}
-          height={node.height}
-          align={align == 'justify' ? 'center' : align}
-          alt={node.alt ?? ''}
-        />
-      );
-  }
-}
-
 type Cache = Record<string, Buffer>;
 
 async function prefetchDocumentSVG(doc: d.Document) {
@@ -622,6 +525,6 @@ async function prefetchSVG(node: d.Block, cache: Cache) {
 }
 
 async function svgToPng(src: string) {
-  const svg = await fetch(src).then((response) => response.text());
+  const svg = await fetch(src).then((response) => response.arrayBuffer());
   return sharp(Buffer.from(svg)).png().toBuffer();
 }
