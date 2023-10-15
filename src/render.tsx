@@ -480,6 +480,12 @@ function TextLines({ node }: { node: d.FormattedText }) {
   if (node.italic) {
     text = <em>{text}</em>;
   }
+  if (node.underline) {
+    text = <u>{text}</u>;
+  }
+  if (node.highlight) {
+    text = <mark>{text}</mark>;
+  }
   return text;
 }
 
@@ -499,11 +505,12 @@ function Text({
       : node.italic
       ? 'Helvetica-Oblique'
       : 'Helvetica';
+  const backgroundColor = node.highlight ? '#ff0' : undefined;
 
   switch (format) {
     case 'pdf':
       return (
-        <ReactPDF.Text style={{ fontFamily, textDecoration }}>
+        <ReactPDF.Text style={{ fontFamily, textDecoration, backgroundColor }}>
           {node.text}
         </ReactPDF.Text>
       );

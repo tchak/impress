@@ -5,6 +5,7 @@ const FormattedText = t.Object({
   bold: t.ReadonlyOptional(t.Boolean()),
   italic: t.ReadonlyOptional(t.Boolean()),
   underline: t.ReadonlyOptional(t.Boolean()),
+  highlight: t.ReadonlyOptional(t.Boolean()),
 });
 
 const Tag = t.Object({
