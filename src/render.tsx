@@ -28,21 +28,21 @@ const styles = ReactPDF.StyleSheet.create({
     paddingHorizontal: 35,
     fontFamily: 'Helvetica',
     display: 'flex',
-    gap: 50,
+    gap: 30,
   },
   vsection: {
     display: 'flex',
     flexDirection: 'column',
     justifyContent: 'flex-start',
-    gap: 5,
+    gap: 30,
   },
   hsection: {
     display: 'flex',
     flexDirection: 'row',
+    gap: 30,
   },
   paragraph: {
-    lineHeight: 1.5,
-    marginBottom: 10,
+    lineHeight: 1.4,
     fontSize: 12,
     fontFamily: 'Helvetica',
   },
@@ -50,16 +50,19 @@ const styles = ReactPDF.StyleSheet.create({
     fontWeight: 'bold',
     fontFamily: 'Helvetica-Bold',
     fontSize: 20,
+    paddingVertical: 20,
   },
   h2: {
     fontWeight: 'bold',
     fontFamily: 'Helvetica-Bold',
     fontSize: 18,
+    paddingVertical: 10,
   },
   h3: {
     fontWeight: 'bold',
     fontFamily: 'Helvetica-Bold',
     fontSize: 16,
+    paddingVertical: 5,
   },
   pageNumbers: {
     position: 'absolute',
@@ -77,11 +80,7 @@ const styles = ReactPDF.StyleSheet.create({
   listItem: {
     display: 'flex',
     flexDirection: 'row',
-    gap: 8,
     width: '100%',
-    lineHeight: 1.5,
-    fontSize: 12,
-    fontFamily: 'Helvetica',
   },
   bullet: {
     marginTop: 6,
@@ -368,7 +367,7 @@ function ListItem({
       return <li>{children}</li>;
     case 'pdf':
       return (
-        <ReactPDF.View style={styles.listItem}>
+        <ReactPDF.View style={[styles.listItem, styles.paragraph]}>
           <ReactPDF.View style={styles.bullet}>
             <ReactPDF.Svg width={2} height={2}>
               <ReactPDF.Circle cx="1" cy="1" r="2" fill="#ccc" />
