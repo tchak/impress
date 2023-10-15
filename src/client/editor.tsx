@@ -13,6 +13,14 @@ import { suggestion } from './suggestion';
 
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
 
+const tags = [
+  { label: 'Prénom', id: 'firstName', defaultValue: 'Paul' },
+  { label: 'Nom', id: 'lastName', defaultValue: 'Chavard' },
+  { label: 'NUR', id: 'nur', defaultValue: '12345qwerty' },
+];
+
+type Tags = { tag: string; value: string }[];
+
 const extensions = [
   StarterKit.configure({
     bulletList: {
@@ -25,11 +33,7 @@ const extensions = [
     renderLabel({ options, node }) {
       return `${options.suggestion.char}${node.attrs.label ?? node.attrs.id}`;
     },
-    suggestion: suggestion([
-      { label: 'Prénom', id: 'firstName' },
-      { label: 'Nom', id: 'lastName' },
-      { label: 'NUR', id: 'nur' },
-    ]),
+    suggestion: suggestion(tags),
   }),
 ];
 
@@ -128,16 +132,35 @@ const EditorJSONPreview = () => {
   const [file, setFile] = useState<Blob | null>(null);
   const { editor } = useCurrentEditor();
 
+  const [tagValues, setTagValues] = useState<Tags>(
+    tags.map(({ id, defaultValue }) => ({ tag: id, value: defaultValue }))
+  );
+
   return (
     <div className="ml-2">
+      <div className="flex flex-col gap-2 mb-2">
+        {tags.map((tag) => (
+          <Input
+            key={tag.id}
+            label={tag.label}
+            name={tag.id}
+            value={tagValues.find(({ tag: t }) => t == tag.id)?.value ?? ''}
+            onChange={(value) => {
+              setTagValues((tagValues) => [
+                ...tagValues.filter(({ tag: t }) => t != tag.id),
+                { tag: tag.id, value },
+              ]);
+            }}
+          />
+        ))}
+      </div>
       <button
         type="button"
         className="rounded bg-white px-2 py-1 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
         onClick={async () => {
           const json = editor?.getJSON();
           if (json) {
-            console.log(JSON.stringify(json, null, 2));
-            renderPDF(json).then((blob) => setFile(blob));
+            renderPDF(json, tagValues).then((blob) => setFile(blob));
           }
         }}
       >
@@ -147,6 +170,39 @@ const EditorJSONPreview = () => {
     </div>
   );
 };
+
+function Input({
+  label,
+  name,
+  value,
+  onChange,
+}: {
+  label: string;
+  name: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <div>
+      <label
+        htmlFor={name}
+        className="block text-sm font-medium leading-6 text-gray-900"
+      >
+        {label}
+      </label>
+      <div className="mt-2">
+        <input
+          type="text"
+          name={name}
+          value={value}
+          id={name}
+          onChange={({ target }) => onChange(target.value)}
+          className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+        />
+      </div>
+    </div>
+  );
+}
 
 function PDFViewer({ file }: { file: Blob }) {
   const [, setNumPages] = useState<number>();
@@ -316,7 +372,7 @@ function setContent(content: JSONContent) {
   localStorage.setItem('tiptap-content', JSON.stringify(content));
 }
 
-function renderPDF(json: JSONContent) {
+function renderPDF(json: JSONContent, tags: Tags) {
   const section = toImpressJSON(json);
   const doc = {
     title: 'Attestation',
@@ -324,11 +380,7 @@ function renderPDF(json: JSONContent) {
   };
   const body = JSON.stringify({
     document: doc,
-    tags: [
-      { tag: 'firstName', value: 'Paul' },
-      { tag: 'lastName', value: 'Chavard' },
-      { tag: 'nur', value: '12345qwerty' },
-    ],
+    tags,
     format: 'pdf',
   });
   return fetch('/v1', {

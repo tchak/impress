@@ -14,6 +14,7 @@
     "up": "npx npm-check-updates --interactive --format group"
   },
   "devDependencies": {
+    "@tailwindcss/forms": "^0.5.6",
     "@tailwindcss/typography": "^0.5.10",
     "@types/html-to-text": "^9.0.2",
     "@types/mjml": "^4.7.2",
