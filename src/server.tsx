@@ -1,6 +1,8 @@
 import { Elysia, t } from 'elysia';
 import { bearer } from '@elysiajs/bearer';
 import { swagger } from '@elysiajs/swagger';
+import { staticPlugin } from '@elysiajs/static';
+import { renderToStaticMarkup } from 'react-dom/server';
 
 import { Document, Tags } from './document';
 import { Config } from './config';
@@ -21,6 +23,7 @@ class UnauthorizedError extends Error {
 const app = new Elysia()
   .use(bearer())
   .use(swagger())
+  .use(staticPlugin({ prefix: '' }))
   .error({
     BAD_REQUEST: BadRequestError,
     UNAUTHORIZED_REQUEST: UnauthorizedError,
@@ -33,6 +36,22 @@ const app = new Elysia()
         return new Response(error.message, { status: 401 });
     }
   })
+  .get('/', async () => {
+    const html = renderToStaticMarkup(
+      <html lang="en">
+        <head>
+          <link rel="stylesheet" href="/assets/tailwind.css" />
+        </head>
+        <body>
+          <div id="root"></div>
+          <script src="/assets/editor.js" type="module"></script>
+        </body>
+      </html>
+    );
+    return new Response(`${html}`, {
+      headers: { 'content-type': 'text/html' },
+    });
+  })
   .post(
     '/v1',
     async ({ headers, body: { document, tags, ...options } }) => {
@@ -44,11 +63,11 @@ const app = new Elysia()
       return new Response(doc, { headers: { 'content-type': contentType } });
     },
     {
-      beforeHandle({ bearer }) {
-        if (bearer !== Config.SECRET_TOKEN) {
-          throw new UnauthorizedError('Invalid token');
-        }
-      },
+      // beforeHandle({ bearer }) {
+      //   if (bearer !== Config.SECRET_TOKEN) {
+      //     throw new UnauthorizedError('Invalid token');
+      //   }
+      // },
       body: t.Object({
         document: Document,
         tags: t.ReadonlyOptional(Tags),

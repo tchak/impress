@@ -3,29 +3,45 @@
   "module": "src/server.ts",
   "type": "module",
   "scripts": {
-    "start": "bun run src/server.ts",
-    "dev": "bun run --watch src/server.ts",
+    "start": "bun run src/server.tsx",
+    "dev": "OVERMIND_SKIP_ENV=true overmind start -f Procfile -N",
+    "dev:server": "bun --watch run src/server.tsx",
+    "dev:js": "bun --watch build --outdir=public/assets --target=browser src/client/editor.tsx",
+    "dev:css": "npx tailwindcss --watch -o ./public/assets/tailwind.css",
+    "build:all": "bun build:js && bun build:css",
+    "build:js": "bun build --outdir=public/assets --target=browser src/client/editor.tsx",
+    "build:css": "npx tailwindcss -o ./public/assets/tailwind.css",
     "up": "npx npm-check-updates --interactive --format group"
   },
   "devDependencies": {
+    "@tailwindcss/typography": "^0.5.10",
     "@types/html-to-text": "^9.0.2",
     "@types/mjml": "^4.7.2",
+    "@types/react": "^18.2.28",
+    "@types/react-dom": "^18.2.13",
     "bun-types": "latest",
-    "@types/react": "^18.2.28"
+    "tailwindcss": "^3.3.3"
   },
   "peerDependencies": {
     "typescript": "^5.0.0"
   },
   "dependencies": {
     "@elysiajs/bearer": "^0.7.0",
+    "@elysiajs/static": "^0.7.1",
     "@elysiajs/swagger": "^0.7.3",
     "@faire/mjml-react": "4.0.0-main-alpha.2",
     "@react-pdf/renderer": "^3.1.13",
+    "@tiptap/extension-mention": "^2.1.12",
+    "@tiptap/pm": "^2.1.12",
+    "@tiptap/react": "^2.1.12",
+    "@tiptap/starter-kit": "^2.1.12",
     "elysia": "^0.7.16",
     "html-to-text": "^9.0.5",
     "mjml": "^4.14.1",
     "react": "^18.2.0",
-    "zod": "^3.22.4",
-    "sharp": "0.33.0-alpha.6"
+    "react-dom": "^18.2.0",
+    "react-pdf": "^7.5.0",
+    "sharp": "0.33.0-alpha.6",
+    "zod": "^3.22.4"
   }
 }
