@@ -4,9 +4,23 @@ import {
   useCurrentEditor,
   type JSONContent,
 } from '@tiptap/react';
+
+import Document from '@tiptap/extension-document';
+import Hystory from '@tiptap/extension-history';
+
+import Paragraph from '@tiptap/extension-paragraph';
+import Heading from '@tiptap/extension-heading';
+import BulletList from '@tiptap/extension-bullet-list';
+import ListItem from '@tiptap/extension-list-item';
+
+import Text from '@tiptap/extension-text';
+import Highlight from '@tiptap/extension-highlight';
+import Underline from '@tiptap/extension-underline';
+import Bold from '@tiptap/extension-bold';
+import Italic from '@tiptap/extension-italic';
 import Mention from '@tiptap/extension-mention';
-import StarterKit from '@tiptap/starter-kit';
-import { Document, Page, pdfjs } from 'react-pdf';
+
+import { Document as PDFDocument, Page, pdfjs } from 'react-pdf';
 import { useState } from 'react';
 
 import { suggestion } from './suggestion';
@@ -22,19 +36,23 @@ const tags = [
 type Tags = { tag: string; value: string }[];
 
 const extensions = [
-  StarterKit.configure({
-    bulletList: {
-      keepMarks: true,
-      keepAttributes: false,
-    },
-    orderedList: false,
-  }),
+  Document,
+  Paragraph,
+  Heading,
+  ListItem,
+  BulletList,
   Mention.configure({
     renderLabel({ options, node }) {
       return `${options.suggestion.char}${node.attrs.label ?? node.attrs.id}`;
     },
     suggestion: suggestion(tags),
   }),
+  Text,
+  Highlight,
+  Underline,
+  Bold,
+  Italic,
+  Hystory,
 ];
 
 const MenuBar = () => {
@@ -55,7 +73,7 @@ const MenuBar = () => {
             : 'bg-white hover:bg-gray-50'
         }`}
       >
-        Bold
+        bold
       </button>
       <button
         type="button"
@@ -66,7 +84,40 @@ const MenuBar = () => {
             : 'bg-white hover:bg-gray-50'
         }`}
       >
-        Italic
+        italic
+      </button>
+      <button
+        type="button"
+        onClick={() => editor.chain().focus().toggleUnderline().run()}
+        className={`relative -ml-px inline-flex items-center px-3 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300 focus:z-10 ${
+          editor.isActive('underline')
+            ? 'bg-blue-200 hover:bg-blue-50'
+            : 'bg-white hover:bg-gray-50'
+        }`}
+      >
+        underline
+      </button>
+      <button
+        type="button"
+        onClick={() => editor.chain().focus().toggleHighlight().run()}
+        className={`relative -ml-px inline-flex items-center px-3 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300 focus:z-10 ${
+          editor.isActive('highlight')
+            ? 'bg-blue-200 hover:bg-blue-50'
+            : 'bg-white hover:bg-gray-50'
+        }`}
+      >
+        highlight
+      </button>
+      <button
+        type="button"
+        onClick={() => editor.chain().focus().toggleBulletList().run()}
+        className={`relative -ml-px inline-flex items-center px-3 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300 focus:z-10 ${
+          editor.isActive('bulletList')
+            ? 'bg-blue-200 hover:bg-blue-50'
+            : 'bg-white hover:bg-gray-50'
+        }`}
+      >
+        list
       </button>
       <button
         type="button"
@@ -88,43 +139,88 @@ const MenuBar = () => {
   );
 };
 
-type Section = {
+type ImpressSection = {
   type: 'section';
-  children: Paragraph[];
+  children: (ImpressParagraph | ImpressBulletedList)[];
 };
 
-type Paragraph = {
+type ImpressParagraph = {
   type: 'paragraph';
-  children: Inline[];
+  children: ImpressInline[];
 };
 
-type Inline =
-  | { text: string; italic?: boolean; bold?: boolean }
+type ImpressListItem = {
+  type: 'list-item';
+  children: ImpressInline[];
+};
+
+type ImpressBulletedList = {
+  type: 'bulleted-list';
+  children: ImpressListItem[];
+};
+
+type ImpressInline =
+  | {
+      text: string;
+      italic?: boolean;
+      bold?: boolean;
+      underline?: boolean;
+      highlight?: boolean;
+    }
   | { type: 'tag'; tag: string };
 
-function toImpressJSON(json: JSONContent): Section {
+function toImpressJSON(json: JSONContent): ImpressSection {
   return {
     type: 'section',
-    children: (json.content ?? []).map<Paragraph>((content) => {
-      if (content.type == 'paragraph') {
-        return {
-          type: 'paragraph',
-          children: (content.content ?? []).map<Inline>((content) => {
-            if (content.type == 'text' && content.text) {
-              return {
-                text: content.text,
-                italic: !!content.marks?.find((mark) => mark.type == 'italic'),
-                bold: !!content.marks?.find((mark) => mark.type == 'bold'),
-              };
-            } else if (content.type == 'mention' && content.attrs?.id) {
-              return { type: 'tag', tag: content.attrs.id };
-            }
-            return { text: '' };
-          }),
-        };
+    children: (json.content ?? []).map<ImpressParagraph | ImpressBulletedList>(
+      (content) => {
+        if (content.type == 'paragraph') {
+          return {
+            type: 'paragraph',
+            children: (content.content ?? []).map<ImpressInline>((content) => {
+              if (content.type == 'text' && content.text) {
+                return {
+                  text: content.text,
+                  ...Object.fromEntries(
+                    content.marks?.map((mark) => [mark.type, true]) ?? []
+                  ),
+                };
+              } else if (content.type == 'mention' && content.attrs?.id) {
+                return { type: 'tag', tag: content.attrs.id };
+              }
+              return { text: '' };
+            }),
+          };
+        } else if (content.type == 'bulletList') {
+          return {
+            type: 'bulleted-list',
+            children: (content.content ?? []).map<ImpressListItem>(
+              (content) => {
+                return {
+                  type: 'list-item',
+                  children: (
+                    content.content?.at(0)?.content ?? []
+                  ).map<ImpressInline>((content) => {
+                    if (content.type == 'text' && content.text) {
+                      return {
+                        text: content.text,
+                        ...Object.fromEntries(
+                          content.marks?.map((mark) => [mark.type, true]) ?? []
+                        ),
+                      };
+                    } else if (content.type == 'mention' && content.attrs?.id) {
+                      return { type: 'tag', tag: content.attrs.id };
+                    }
+                    return { text: '' };
+                  }),
+                };
+              }
+            ),
+          };
+        }
+        return { type: 'paragraph', children: [{ text: '' }] };
       }
-      return { type: 'paragraph', children: [{ text: '' }] };
-    }),
+    ),
   };
 }
 
@@ -213,9 +309,9 @@ function PDFViewer({ file }: { file: Blob }) {
   }
 
   return (
-    <Document file={file} onLoadSuccess={onLoadSuccess}>
+    <PDFDocument file={file} onLoadSuccess={onLoadSuccess}>
       <Page pageNumber={pageNumber} renderTextLayer={false} />
-    </Document>
+    </PDFDocument>
   );
 }
 
@@ -390,7 +486,7 @@ function renderPDF(json: JSONContent, tags: Tags) {
   }).then((res) => res.blob());
 }
 
-function sections(section: Section) {
+function sections(section: ImpressSection) {
   return [
     {
       type: 'grid',
