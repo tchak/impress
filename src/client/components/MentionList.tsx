@@ -2,11 +2,12 @@ import { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
 
 export type Tag = { label: string; id: string };
 export type Ref = { onKeyDown: (_: { event: KeyboardEvent }) => void };
+export type Props = {
+  items: Tag[];
+  command: (tag: Tag) => void;
+};
 
-export const MentionList = forwardRef<
-  Ref,
-  { items: Tag[]; command: (tag: Tag) => void }
->((props, ref) => {
+export const MentionList = forwardRef<Ref, Props>((props, ref) => {
   const [selectedIndex, setSelectedIndex] = useState(0);
 
   const selectItem = (index: number) => {

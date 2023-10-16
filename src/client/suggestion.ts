@@ -2,10 +2,18 @@ import { ReactRenderer } from '@tiptap/react';
 import tippy, { Instance } from 'tippy.js';
 import { SuggestionOptions } from '@tiptap/suggestion';
 
-import { MentionList, type Ref, type Tag } from './components/MentionList';
+import {
+  MentionList,
+  type Ref,
+  type Tag,
+  type Props,
+} from './components/MentionList';
 
-export function suggestion(items: Tag[]): SuggestionOptions {
+export function suggestion(
+  items: Tag[]
+): Omit<SuggestionOptions<Tag>, 'editor'> {
   return {
+    char: '#',
     items: ({ query }) => {
       return items
         .filter((item) =>
@@ -13,12 +21,8 @@ export function suggestion(items: Tag[]): SuggestionOptions {
         )
         .slice(0, 5);
     },
-
-    char: '#',
-
-    // @ts-expect-error
     render: () => {
-      let reactRenderer: ReactRenderer<Ref>;
+      let reactRenderer: ReactRenderer<Ref, Props>;
       let popup: Instance[];
 
       return {
@@ -27,8 +31,7 @@ export function suggestion(items: Tag[]): SuggestionOptions {
             return;
           }
 
-          // @ts-expect-error
-          reactRenderer = new ReactRenderer<Ref>(MentionList, {
+          reactRenderer = new ReactRenderer<Ref, Props>(MentionList, {
             props,
             editor: props.editor,
           });
@@ -65,7 +68,7 @@ export function suggestion(items: Tag[]): SuggestionOptions {
             return true;
           }
 
-          return reactRenderer.ref?.onKeyDown(props);
+          return reactRenderer.ref?.onKeyDown(props) ?? false;
         },
 
         onExit() {
