@@ -393,8 +393,7 @@ function renderPDF(json: JSONContent, tags: Tags) {
 function sections(section: Section) {
   return [
     {
-      type: 'section',
-      direction: 'horizontal',
+      type: 'grid',
       children: [
         {
           type: 'section',
@@ -432,8 +431,7 @@ function sections(section: Section) {
       ],
     },
     {
-      type: 'section',
-      direction: 'horizontal',
+      type: 'grid',
       children: [
         {
           type: 'section',

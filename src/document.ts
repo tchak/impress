@@ -1,4 +1,4 @@
-import { t, Static } from 'elysia';
+import { Type as t, Static } from '@sinclair/typebox';
 
 const FormattedText = t.Object({
   text: t.Readonly(t.String()),
@@ -64,23 +64,20 @@ const Align = t.Union([
   t.Literal('justify'),
 ]);
 
-const VerticalSection = t.Object({
+const Section = t.Object({
   type: t.Readonly(t.Literal('section')),
-  direction: t.ReadonlyOptional(t.Literal('vertical')),
   align: t.ReadonlyOptional(Align),
   children: t.Readonly(t.Array(Block)),
 });
-const HorizontalSection = t.Object({
-  type: t.Readonly(t.Literal('section')),
-  direction: t.Readonly(t.Literal('horizontal')),
-  children: t.Readonly(t.Array(VerticalSection)),
+const Grid = t.Object({
+  type: t.Readonly(t.Literal('grid')),
+  children: t.Readonly(t.Array(Section)),
 });
-const Section = t.Union([VerticalSection, HorizontalSection]);
 
 export const Document = t.Object({
   language: t.ReadonlyOptional(t.String()),
   title: t.Readonly(t.String()),
-  children: t.Readonly(t.Array(Section)),
+  children: t.Readonly(t.Array(t.Union([Section, Grid]))),
 });
 
 export const Tags = t.Array(t.Object({ tag: t.String(), value: t.String() }));
@@ -98,4 +95,6 @@ export type BulletedList = Static<typeof BulletedList>;
 export type NumberedList = Static<typeof NumberedList>;
 export type Block = Static<typeof Block>;
 export type Section = Static<typeof Section>;
+export type Align = Static<typeof Align>;
+export type Grid = Static<typeof Grid>;
 export type Document = Static<typeof Document>;

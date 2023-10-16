@@ -9,7 +9,6 @@ describe('Document', () => {
       children: [
         {
           type: 'section',
-          direction: 'vertical',
           children: [
             {
               type: 'paragraph',

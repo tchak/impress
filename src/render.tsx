@@ -15,11 +15,10 @@ import mjmlToHTML from 'mjml';
 import { type ReactNode, createContext, useContext } from 'react';
 import sharp from 'sharp';
 
-import * as d from './document';
+import type * as d from './document';
 
 type RenderFormat = 'pdf' | 'mjml';
 type Format = 'html' | 'pdf' | 'mjml' | 'text';
-type Align = 'left' | 'center' | 'right' | 'justify';
 
 const styles = ReactPDF.StyleSheet.create({
   page: {
@@ -29,14 +28,14 @@ const styles = ReactPDF.StyleSheet.create({
     fontFamily: 'Helvetica',
     display: 'flex',
   },
-  vsection: {
+  section: {
     display: 'flex',
     flexDirection: 'column',
     justifyContent: 'flex-start',
     gap: 10,
     paddingBottom: 30,
   },
-  hsection: {
+  grid: {
     display: 'flex',
     flexDirection: 'row',
   },
@@ -141,9 +140,13 @@ export function Document({
   format: RenderFormat;
 }) {
   const language = node.language ?? 'en';
-  const children = node.children.map((child, index) => (
-    <Section key={index} parent="document" node={child} />
-  ));
+  const children = node.children.map((child, index) =>
+    child.type == 'section' ? (
+      <Section key={index} parent="document" node={child} />
+    ) : (
+      <Grid key={index} node={child} />
+    )
+  );
   switch (format) {
     case 'pdf':
       return (
@@ -176,44 +179,47 @@ export function Document({
   }
 }
 
+function Grid({ node }: { node: d.Grid }) {
+  const { format } = useContext(DocumentContext);
+  const children = node.children.map((child, index) => (
+    <Section key={index} parent="grid" node={child} />
+  ));
+
+  switch (format) {
+    case 'pdf':
+      return <ReactPDF.View style={styles.grid}>{children}</ReactPDF.View>;
+    case 'mjml':
+      return <MjmlSection padding="10px 0">{children}</MjmlSection>;
+  }
+}
+
 function Section({
   node,
   parent,
 }: {
   node: d.Section;
-  parent: 'document' | 'section';
+  parent: 'document' | 'grid';
 }) {
   const { format } = useContext(DocumentContext);
-  const isHorizontal = node.direction == 'horizontal';
-  const textAlign = isHorizontal ? undefined : node.align ?? 'left';
-  const children = isHorizontal
-    ? node.children.map((child, index) => (
-        <Section key={index} parent="section" node={child} />
-      ))
-    : node.children.map((child, index) => (
-        <Block key={index} align={textAlign} node={child} />
-      ));
+  const textAlign = node.align ?? 'left';
+  const children = node.children.map((child, index) => (
+    <Block key={index} align={textAlign} node={child} />
+  ));
 
   switch (format) {
     case 'pdf':
       return (
         <ReactPDF.View
-          style={
-            isHorizontal
-              ? styles.hsection
-              : [
-                  styles.vsection,
-                  { textAlign, flex: parent == 'section' ? 1 : undefined },
-                ]
-          }
+          style={[
+            styles.section,
+            { textAlign, flex: parent == 'grid' ? 1 : undefined },
+          ]}
         >
           {children}
         </ReactPDF.View>
       );
     case 'mjml':
-      if (isHorizontal) {
-        return <MjmlSection padding="10px 0">{children}</MjmlSection>;
-      } else if (parent == 'section') {
+      if (parent == 'grid') {
         return <MjmlColumn>{children}</MjmlColumn>;
       } else {
         return (
@@ -225,7 +231,7 @@ function Section({
   }
 }
 
-function Block({ node, align }: { node: d.Block; align?: Align }) {
+function Block({ node, align }: { node: d.Block; align?: d.Align }) {
   switch (node.type) {
     case 'paragraph':
       return <Paragraph node={node} align={align} />;
@@ -252,7 +258,7 @@ function Inline({ node }: { node: d.Inline }) {
   }
 }
 
-function Heading({ node, align }: { node: d.Heading; align?: Align }) {
+function Heading({ node, align }: { node: d.Heading; align?: d.Align }) {
   const { format } = useContext(DocumentContext);
   const children = node.children.map((child, index) => (
     <Inline key={index} node={child} />
@@ -273,7 +279,7 @@ function Heading({ node, align }: { node: d.Heading; align?: Align }) {
   }
 }
 
-function Paragraph({ node, align }: { node: d.Paragraph; align?: Align }) {
+function Paragraph({ node, align }: { node: d.Paragraph; align?: d.Align }) {
   const { format } = useContext(DocumentContext);
   const children = node.children.map((child, index) => (
     <Inline key={index} node={child} />
@@ -321,7 +327,7 @@ function NumberedList({
   align,
 }: {
   node: d.NumberedList;
-  align?: Align;
+  align?: d.Align;
 }) {
   const { format } = useContext(DocumentContext);
   const children = node.children.map((child, index) => (
@@ -344,7 +350,7 @@ function BulletedList({
   align,
 }: {
   node: d.BulletedList;
-  align?: Align;
+  align?: d.Align;
 }) {
   const { format } = useContext(DocumentContext);
   const children = node.children.map((child, index) => (
@@ -362,7 +368,7 @@ function BulletedList({
   }
 }
 
-function Image({ node, align }: { node: d.Image; align?: Align }) {
+function Image({ node, align }: { node: d.Image; align?: d.Align }) {
   const { format, cache } = useContext(DocumentContext);
   switch (format) {
     case 'pdf':
