@@ -19,6 +19,7 @@ import Underline from '@tiptap/extension-underline';
 import Bold from '@tiptap/extension-bold';
 import Italic from '@tiptap/extension-italic';
 import Mention from '@tiptap/extension-mention';
+import Typography from '@tiptap/extension-typography';
 
 import { Document as PDFDocument, Page, pdfjs } from 'react-pdf';
 import { useState } from 'react';
@@ -47,6 +48,7 @@ const extensions = [
     },
     suggestion: suggestion(tags),
   }),
+  Typography,
   Text,
   Highlight,
   Underline,
