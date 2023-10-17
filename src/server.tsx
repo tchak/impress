@@ -52,7 +52,7 @@ const app = new Elysia()
         </head>
         <body>
           <div id="root"></div>
-          <script src="/assets/editor.js" type="module"></script>
+          <script src="/assets/app.js" type="module"></script>
         </body>
       </html>
     );

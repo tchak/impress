@@ -24,9 +24,6 @@ export const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: 'Helvetica',
   },
-  paragraph: {
-    paddingBottom: 30,
-  },
   h1: {
     fontWeight: 'bold',
     fontFamily: 'Helvetica-Bold',

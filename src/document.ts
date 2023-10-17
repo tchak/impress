@@ -54,28 +54,29 @@ const Paragraph = z.object({
   content: Inline.array(),
 });
 
-const ListItem = z.object({
+export type ListItem = {
+  type: 'listItem';
+  content: (Heading | Paragraph | Image | OrderedList | BulletList)[];
+};
+export type OrderedList = { type: 'orderedList'; content: ListItem[] };
+export type BulletList = { type: 'bulletList'; content: ListItem[] };
+
+const ListItem: z.ZodType<ListItem> = z.object({
   type: z.literal('listItem'),
-  content: Paragraph.array(),
+  content: z.lazy(() => Block).array(),
 });
 
-const OrderedList = z.object({
+const OrderedList: z.ZodType<OrderedList> = z.object({
   type: z.literal('orderedList'),
   content: ListItem.array(),
 });
 
-const BulletList = z.object({
+const BulletList: z.ZodType<BulletList> = z.object({
   type: z.literal('bulletList'),
   content: ListItem.array(),
 });
 
-const Block = z.discriminatedUnion('type', [
-  Heading,
-  Paragraph,
-  OrderedList,
-  BulletList,
-  Image,
-]);
+const Block = z.union([Heading, Paragraph, OrderedList, BulletList, Image]);
 
 const Align = z.enum(['left', 'center', 'right', 'justify']);
 
@@ -114,9 +115,6 @@ export type Link = z.infer<typeof Link>;
 export type Inline = z.infer<typeof Inline>;
 export type Heading = z.infer<typeof Heading>;
 export type Paragraph = z.infer<typeof Paragraph>;
-export type ListItem = z.infer<typeof ListItem>;
-export type OrderedList = z.infer<typeof OrderedList>;
-export type BulletList = z.infer<typeof BulletList>;
 export type Block = z.infer<typeof Block>;
 export type Section = z.infer<typeof Section>;
 export type Align = z.infer<typeof Align>;

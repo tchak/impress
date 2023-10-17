@@ -6,10 +6,10 @@
     "start": "bun run src/server.tsx",
     "dev": "OVERMIND_SKIP_ENV=true overmind start -f Procfile -N",
     "dev:server": "bun --watch run src/server.tsx",
-    "dev:js": "bun --watch build --outdir=public/assets --target=browser src/client/editor.tsx",
+    "dev:js": "bun --watch build --outdir=public/assets --target=browser src/client/app.tsx",
     "dev:css": "npx tailwindcss --watch -o ./public/assets/tailwind.css",
     "build:all": "bun build:js && bun build:css",
-    "build:js": "bun build --outdir=public/assets --target=browser src/client/editor.tsx",
+    "build:js": "bun build --outdir=public/assets --target=browser src/client/app.tsx",
     "build:css": "npx tailwindcss -o ./public/assets/tailwind.css",
     "up": "npx npm-check-updates --interactive --format group"
   },

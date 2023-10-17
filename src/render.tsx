@@ -92,7 +92,7 @@ export function Doc({
 }) {
   const children = node.content.map((child, index) =>
     child.type == 'section' ? (
-      <Section key={index} parent="document" node={child} />
+      <Section key={index} depth={0} node={child} />
     ) : (
       <Grid key={index} node={child} />
     )
@@ -144,7 +144,7 @@ export function Doc({
 function Grid({ node }: { node: d.Grid }) {
   const { format } = useContext(RenderContext);
   const children = node.content.map((child, index) => (
-    <Section key={index} parent="grid" node={child} />
+    <Section key={index} depth={1} node={child} />
   ));
 
   switch (format) {
@@ -155,17 +155,11 @@ function Grid({ node }: { node: d.Grid }) {
   }
 }
 
-function Section({
-  node,
-  parent,
-}: {
-  node: d.Section;
-  parent: 'document' | 'grid';
-}) {
+function Section({ node, depth }: { node: d.Section; depth: number }) {
   const { format } = useContext(RenderContext);
   const textAlign = node.attrs?.align ?? 'left';
   const children = node.content.map((child, index) => (
-    <Block key={index} align={textAlign} node={child} />
+    <Block key={index} depth={0} align={textAlign} node={child} />
   ));
 
   switch (format) {
@@ -174,14 +168,14 @@ function Section({
         <ReactPDF.View
           style={[
             styles.section,
-            { textAlign, flex: parent == 'grid' ? 1 : undefined },
+            { textAlign, flex: depth == 1 ? 1 : undefined },
           ]}
         >
           {children}
         </ReactPDF.View>
       );
     case 'mjml':
-      if (parent == 'grid') {
+      if (depth == 1) {
         return <MjmlColumn>{children}</MjmlColumn>;
       } else {
         return (
@@ -193,18 +187,26 @@ function Section({
   }
 }
 
-function Block({ node, align }: { node: d.Block; align?: d.Align }) {
+function Block({
+  node,
+  depth,
+  align,
+}: {
+  node: d.Block;
+  depth: number;
+  align?: d.Align;
+}) {
   switch (node.type) {
     case 'paragraph':
-      return <Paragraph node={node} align={align} />;
+      return <Paragraph node={node} depth={depth} align={align} />;
     case 'heading':
-      return <Heading node={node} align={align} />;
+      return <Heading node={node} depth={depth} align={align} />;
     case 'orderedList':
-      return <OrderedList node={node} align={align} />;
+      return <OrderedList node={node} depth={depth} align={align} />;
     case 'bulletList':
-      return <BulletList node={node} align={align} />;
+      return <BulletList node={node} depth={depth} align={align} />;
     case 'image':
-      return <Image node={node} align={align} />;
+      return <Image node={node} depth={depth} align={align} />;
   }
 }
 
@@ -219,11 +221,19 @@ function Inline({ node }: { node: d.Inline }) {
     case 'hardBreak':
       return format == 'mjml' ? <br /> : '';
     case 'image':
-      return <Image node={node} inline={true} />;
+      return <Image node={node} depth={1} />;
   }
 }
 
-function Heading({ node, align }: { node: d.Heading; align?: d.Align }) {
+function Heading({
+  node,
+  depth,
+  align,
+}: {
+  node: d.Heading;
+  depth: number;
+  align?: d.Align;
+}) {
   const { format } = useContext(RenderContext);
   const children = node.content.map((child, index) => (
     <Inline key={index} node={child} />
@@ -236,6 +246,9 @@ function Heading({ node, align }: { node: d.Heading; align?: d.Align }) {
         </ReactPDF.Text>
       );
     case 'mjml':
+      if (depth > 0) {
+        return <HTMLHeading level={node.attrs.level}>{children}</HTMLHeading>;
+      }
       return (
         <MjmlText align={align}>
           <HTMLHeading level={node.attrs.level}>{children}</HTMLHeading>
@@ -244,7 +257,15 @@ function Heading({ node, align }: { node: d.Heading; align?: d.Align }) {
   }
 }
 
-function Paragraph({ node, align }: { node: d.Paragraph; align?: d.Align }) {
+function Paragraph({
+  node,
+  depth,
+  align,
+}: {
+  node: d.Paragraph;
+  depth: number;
+  align?: d.Align;
+}) {
   const { format } = useContext(RenderContext);
   const children = node.content.map((child, index) => (
     <Inline key={index} node={child} />
@@ -252,11 +273,19 @@ function Paragraph({ node, align }: { node: d.Paragraph; align?: d.Align }) {
   switch (format) {
     case 'pdf':
       return (
-        <ReactPDF.Text style={[styles.text, styles.paragraph]}>
+        <ReactPDF.Text
+          style={[
+            styles.text,
+            depth > 0 ? { paddingBottom: 5 } : { paddingBottom: 30 },
+          ]}
+        >
           {children}
         </ReactPDF.Text>
       );
     case 'mjml':
+      if (depth > 0) {
+        return <p>{children}</p>;
+      }
       return (
         <MjmlText align={align}>
           <p>{children}</p>
@@ -265,14 +294,12 @@ function Paragraph({ node, align }: { node: d.Paragraph; align?: d.Align }) {
   }
 }
 
-function ListItem({ node }: { node: d.ListItem }) {
+function ListItem({ node, depth }: { node: d.ListItem; depth: number }) {
   const { format } = useContext(RenderContext);
-  const children = node.content
-    .flatMap((child) => child.content)
-    .map((child, index) => <Inline key={index} node={child} />);
+  const children = node.content.map((child, index) => (
+    <Block key={index} depth={depth + 1} node={child} />
+  ));
   switch (format) {
-    case 'mjml':
-      return <li>{children}</li>;
     case 'pdf':
       return (
         <ReactPDF.View style={[styles.listItem, styles.text]}>
@@ -284,24 +311,31 @@ function ListItem({ node }: { node: d.ListItem }) {
           {children}
         </ReactPDF.View>
       );
+    case 'mjml':
+      return <li>{children}</li>;
   }
 }
 
 function OrderedList({
   node,
+  depth,
   align,
 }: {
   node: d.OrderedList;
+  depth: number;
   align?: d.Align;
 }) {
   const { format } = useContext(RenderContext);
   const children = node.content.map((child, index) => (
-    <ListItem key={index} node={child} />
+    <ListItem key={index} depth={depth} node={child} />
   ));
   switch (format) {
     case 'pdf':
       return <ReactPDF.View style={styles.list}>{children}</ReactPDF.View>;
     case 'mjml':
+      if (depth > 0) {
+        return <ol>{children}</ol>;
+      }
       return (
         <MjmlText align={align}>
           <ol>{children}</ol>
@@ -310,15 +344,26 @@ function OrderedList({
   }
 }
 
-function BulletList({ node, align }: { node: d.BulletList; align?: d.Align }) {
+function BulletList({
+  node,
+  depth,
+  align,
+}: {
+  node: d.BulletList;
+  depth: number;
+  align?: d.Align;
+}) {
   const { format } = useContext(RenderContext);
   const children = node.content.map((child, index) => (
-    <ListItem key={index} node={child} />
+    <ListItem key={index} depth={depth} node={child} />
   ));
   switch (format) {
     case 'pdf':
       return <ReactPDF.View style={styles.list}>{children}</ReactPDF.View>;
     case 'mjml':
+      if (depth > 0) {
+        return <ul>{children}</ul>;
+      }
       return (
         <MjmlText align={align}>
           <ul>{children}</ul>
@@ -329,12 +374,12 @@ function BulletList({ node, align }: { node: d.BulletList; align?: d.Align }) {
 
 function Image({
   node,
+  depth,
   align,
-  inline,
 }: {
   node: d.Image;
+  depth: number;
   align?: d.Align;
-  inline?: boolean;
 }) {
   const { format, cache } = useContext(RenderContext);
   switch (format) {
@@ -346,7 +391,7 @@ function Image({
         />
       );
     case 'mjml':
-      return inline ? (
+      return depth > 0 ? (
         <img
           src={node.attrs.src}
           alt={node.attrs.alt}

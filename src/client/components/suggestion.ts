@@ -2,14 +2,9 @@ import { ReactRenderer } from '@tiptap/react';
 import tippy, { Instance } from 'tippy.js';
 import { SuggestionOptions } from '@tiptap/suggestion';
 
-import {
-  MentionList,
-  type Ref,
-  type Tag,
-  type Props,
-} from './components/MentionList';
+import { MentionList, type Ref, type Tag, type Props } from './MentionList';
 
-export function suggestion(
+export function createSuggestion(
   items: Tag[]
 ): Omit<SuggestionOptions<Tag>, 'editor'> {
   return {
