@@ -1,100 +1,125 @@
-import { Type as t, Static } from '@sinclair/typebox';
+import { z } from 'zod';
 
-const FormattedText = t.Object({
-  text: t.Readonly(t.String()),
-  bold: t.ReadonlyOptional(t.Boolean()),
-  italic: t.ReadonlyOptional(t.Boolean()),
-  underline: t.ReadonlyOptional(t.Boolean()),
-  highlight: t.ReadonlyOptional(t.Boolean()),
+const Link = z.object({
+  type: z.literal('link'),
+  attrs: z.object({
+    href: z.string(),
+    rel: z.string().optional(),
+    target: z.string().optional(),
+  }),
 });
 
-const Tag = t.Object({
-  type: t.Readonly(t.Literal('tag')),
-  tag: t.Readonly(t.String()),
-});
-
-const Link = t.Object({
-  type: t.Readonly(t.Literal('link')),
-  href: t.Readonly(t.String()),
-  children: t.Readonly(t.Array(t.Union([FormattedText, Tag]))),
-});
-
-const Inline = t.Union([FormattedText, Link, Tag]);
-
-const Heading = t.Object({
-  type: t.Readonly(t.Literal('heading')),
-  level: t.Readonly(t.Number({ int: true, minimum: 1, maximum: 3 })),
-  children: t.Readonly(t.Array(Inline)),
-});
-
-const ListItem = t.Object({
-  type: t.Readonly(t.Literal('list-item')),
-  children: t.Readonly(t.Array(Inline)),
-});
-
-const Paragraph = t.Object({
-  type: t.Readonly(t.Literal('paragraph')),
-  children: t.Readonly(t.Array(Inline)),
-});
-
-const NumberedList = t.Object({
-  type: t.Readonly(t.Literal('numbered-list')),
-  children: t.Readonly(t.Array(ListItem)),
-});
-
-const BulletedList = t.Object({
-  type: t.Readonly(t.Literal('bulleted-list')),
-  children: t.Readonly(t.Array(ListItem)),
-});
-
-const Image = t.Object({
-  type: t.Readonly(t.Literal('image')),
-  src: t.Readonly(t.String()),
-  alt: t.ReadonlyOptional(t.String()),
-  width: t.ReadonlyOptional(t.Number({ int: true, minimum: 1 })),
-  height: t.ReadonlyOptional(t.Number({ int: true, minimum: 1 })),
-});
-
-const Block = t.Union([Heading, Paragraph, NumberedList, BulletedList, Image]);
-
-const Align = t.Union([
-  t.Literal('left'),
-  t.Literal('center'),
-  t.Literal('right'),
-  t.Literal('justify'),
+const Mark = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('bold') }),
+  z.object({ type: z.literal('italic') }),
+  z.object({ type: z.literal('underline') }),
+  z.object({ type: z.literal('highlight') }),
+  Link,
 ]);
 
-const Section = t.Object({
-  type: t.Readonly(t.Literal('section')),
-  align: t.ReadonlyOptional(Align),
-  children: t.Readonly(t.Array(Block)),
-});
-const Grid = t.Object({
-  type: t.Readonly(t.Literal('grid')),
-  children: t.Readonly(t.Array(Section)),
+const Text = z.object({
+  type: z.literal('text'),
+  text: z.string(),
+  marks: Mark.array().optional(),
 });
 
-export const Document = t.Object({
-  language: t.ReadonlyOptional(t.String()),
-  title: t.Readonly(t.String()),
-  children: t.Readonly(t.Array(t.Union([Section, Grid]))),
+const Tag = z.object({
+  type: z.enum(['tag', 'mention']),
+  attrs: z.object({ id: z.string(), label: z.string().optional() }),
+  marks: Mark.array().optional(),
 });
 
-export const Tags = t.Array(t.Object({ tag: t.String(), value: t.String() }));
-export type Tags = Static<typeof Tags>;
+const HardBreak = z.object({ type: z.literal('hardBreak') });
 
-export type FormattedText = Static<typeof FormattedText>;
-export type Tag = Static<typeof Tag>;
-export type Link = Static<typeof Link>;
-export type Image = Static<typeof Image>;
-export type Inline = Static<typeof Inline>;
-export type Heading = Static<typeof Heading>;
-export type Paragraph = Static<typeof Paragraph>;
-export type ListItem = Static<typeof ListItem>;
-export type BulletedList = Static<typeof BulletedList>;
-export type NumberedList = Static<typeof NumberedList>;
-export type Block = Static<typeof Block>;
-export type Section = Static<typeof Section>;
-export type Align = Static<typeof Align>;
-export type Grid = Static<typeof Grid>;
-export type Document = Static<typeof Document>;
+const Image = z.object({
+  type: z.literal('image'),
+  attrs: z.object({
+    src: z.string(),
+    alt: z.string().optional(),
+    width: z.number().int().min(1).optional(),
+    height: z.number().int().min(1).optional(),
+  }),
+});
+
+const Inline = z.discriminatedUnion('type', [Text, Image, Tag, HardBreak]);
+
+const Heading = z.object({
+  type: z.literal('heading'),
+  attrs: z.object({ level: z.number().int().min(1).max(3) }),
+  content: Inline.array(),
+});
+
+const Paragraph = z.object({
+  type: z.literal('paragraph'),
+  content: Inline.array(),
+});
+
+const ListItem = z.object({
+  type: z.literal('listItem'),
+  content: Paragraph.array(),
+});
+
+const OrderedList = z.object({
+  type: z.literal('orderedList'),
+  content: ListItem.array(),
+});
+
+const BulletList = z.object({
+  type: z.literal('bulletList'),
+  content: ListItem.array(),
+});
+
+const Block = z.discriminatedUnion('type', [
+  Heading,
+  Paragraph,
+  OrderedList,
+  BulletList,
+  Image,
+]);
+
+const Align = z.enum(['left', 'center', 'right', 'justify']);
+
+const Section = z.object({
+  type: z.literal('section'),
+  attrs: z.object({ align: Align.optional() }).optional(),
+  content: Block.array(),
+});
+
+const Grid = z.object({
+  type: z.literal('grid'),
+  content: Section.array(),
+});
+
+export const Doc = z.object({
+  type: z.literal('doc'),
+  attrs: z.object({
+    language: z.string().default('en'),
+    title: z.string(),
+  }),
+  content: z.discriminatedUnion('type', [Section, Grid]).array(),
+});
+
+export const TagValue = z.object({
+  id: z.string(),
+  value: z.union([z.string(), z.number(), z.string().array()]),
+});
+export type TagValue = z.infer<typeof TagValue>;
+export const Tags = TagValue.array();
+export type Tags = z.infer<typeof Tags>;
+
+export type Text = z.infer<typeof Text>;
+export type Tag = z.infer<typeof Tag>;
+export type Image = z.infer<typeof Image>;
+export type Link = z.infer<typeof Link>;
+export type Inline = z.infer<typeof Inline>;
+export type Heading = z.infer<typeof Heading>;
+export type Paragraph = z.infer<typeof Paragraph>;
+export type ListItem = z.infer<typeof ListItem>;
+export type OrderedList = z.infer<typeof OrderedList>;
+export type BulletList = z.infer<typeof BulletList>;
+export type Block = z.infer<typeof Block>;
+export type Section = z.infer<typeof Section>;
+export type Align = z.infer<typeof Align>;
+export type Mark = z.infer<typeof Mark>;
+export type Grid = z.infer<typeof Grid>;
+export type Doc = z.infer<typeof Doc>;

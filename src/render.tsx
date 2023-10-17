@@ -8,116 +8,67 @@ import {
   MjmlColumn,
   MjmlBody,
   MjmlImage,
+  MjmlAttributes,
 } from '@faire/mjml-react';
 import { renderToMjml } from '@faire/mjml-react/utils/renderToMjml';
 import { htmlToText } from 'html-to-text';
 import mjmlToHTML from 'mjml';
 import { type ReactNode, createContext, useContext } from 'react';
-import sharp from 'sharp';
+
+import { memoize } from '@formatjs/fast-memoize';
 
 import type * as d from './document';
+import { prefetchImages, type Cache } from './prefetch-images';
+import { styles } from './pdf-styles';
 
 type RenderFormat = 'pdf' | 'mjml';
 type Format = 'html' | 'pdf' | 'mjml' | 'text';
 
-const styles = ReactPDF.StyleSheet.create({
-  page: {
-    paddingTop: 35,
-    paddingBottom: 65,
-    paddingHorizontal: 35,
-    fontFamily: 'Helvetica',
-    display: 'flex',
-  },
-  section: {
-    display: 'flex',
-    flexDirection: 'column',
-    justifyContent: 'flex-start',
-    gap: 10,
-    paddingBottom: 30,
-  },
-  grid: {
-    display: 'flex',
-    flexDirection: 'row',
-  },
-  text: {
-    lineHeight: 1.4,
-    fontSize: 12,
-    fontFamily: 'Helvetica',
-  },
-  paragraph: {
-    paddingBottom: 30,
-  },
-  h1: {
-    fontWeight: 'bold',
-    fontFamily: 'Helvetica-Bold',
-    fontSize: 20,
-    paddingVertical: 20,
-  },
-  h2: {
-    fontWeight: 'bold',
-    fontFamily: 'Helvetica-Bold',
-    fontSize: 18,
-    paddingVertical: 10,
-  },
-  h3: {
-    fontWeight: 'bold',
-    fontFamily: 'Helvetica-Bold',
-    fontSize: 16,
-    paddingVertical: 5,
-  },
-  pageNumbers: {
-    position: 'absolute',
-    bottom: 20,
-    left: 0,
-    right: 0,
-    textAlign: 'center',
-    fontSize: 12,
-    fontFamily: 'Helvetica',
-  },
-  list: {
-    display: 'flex',
-    flexDirection: 'column',
-  },
-  listItem: {
-    display: 'flex',
-    flexDirection: 'row',
-    width: '100%',
-    gap: 5,
-    paddingBottom: 2,
-  },
-  bullet: {
-    marginTop: 6,
-  },
-});
+const formatters = {
+  getListFormat: memoize(
+    (locale: string | string[], opts?: Intl.ListFormatOptions) =>
+      new Intl.ListFormat(locale, opts)
+  ),
+  getNumberFormat: memoize(
+    (locale: string | string[], opts?: Intl.NumberFormatOptions) =>
+      new Intl.NumberFormat(locale, opts)
+  ),
+  getDateTimeFormat: memoize(
+    (locale: string | string[], opts?: Intl.DateTimeFormatOptions) =>
+      new Intl.DateTimeFormat(locale, opts)
+  ),
+};
 
-const DocumentContext = createContext<{
+const RenderContext = createContext<{
+  language: string;
   format: RenderFormat;
   tags: d.Tags;
   cache: Cache;
 }>({
+  language: 'en-uk',
   format: 'mjml',
   tags: [],
   cache: {},
 });
 
 export async function renderDocument(
-  document: d.Document,
+  doc: d.Doc,
   tags: d.Tags,
   format: Format
 ): Promise<string | Buffer> {
-  const cache = format == 'pdf' ? await prefetchDocumentSVG(document) : {};
-  const doc = (
-    <Document
-      node={document}
+  const cache = format == 'pdf' ? await prefetchImages(doc.content) : {};
+  const element = (
+    <Doc
+      node={doc}
       tags={tags}
       cache={cache}
       format={format == 'pdf' ? 'pdf' : 'mjml'}
     />
   );
   if (format == 'pdf') {
-    return ReactPDF.renderToBuffer(doc);
+    return ReactPDF.renderToBuffer(element);
   }
-  const mjml = renderToMjml(doc);
+  const mjml = renderToMjml(element);
   switch (format) {
     case 'html':
       return mjmlToHTML(mjml).html;
@@ -128,19 +79,18 @@ export async function renderDocument(
   }
 }
 
-export function Document({
+export function Doc({
   node,
   tags,
   cache,
   format,
 }: {
-  node: d.Document;
+  node: d.Doc;
   tags: d.Tags;
   cache: Cache;
   format: RenderFormat;
 }) {
-  const language = node.language ?? 'en';
-  const children = node.children.map((child, index) =>
+  const children = node.content.map((child, index) =>
     child.type == 'section' ? (
       <Section key={index} parent="document" node={child} />
     ) : (
@@ -150,8 +100,13 @@ export function Document({
   switch (format) {
     case 'pdf':
       return (
-        <DocumentContext.Provider value={{ format, tags, cache }}>
-          <ReactPDF.Document language={language} title={node.title}>
+        <RenderContext.Provider
+          value={{ format, tags, cache, language: node.attrs.language }}
+        >
+          <ReactPDF.Document
+            language={node.attrs.language}
+            title={node.attrs.title}
+          >
             <ReactPDF.Page size="A4" style={styles.page}>
               {children}
               <ReactPDF.Text
@@ -163,25 +118,32 @@ export function Document({
               />
             </ReactPDF.Page>
           </ReactPDF.Document>
-        </DocumentContext.Provider>
+        </RenderContext.Provider>
       );
     case 'mjml':
       return (
-        <DocumentContext.Provider value={{ format, tags, cache }}>
-          <Mjml lang={language}>
+        <RenderContext.Provider
+          value={{ format, tags, cache, language: node.attrs.language }}
+        >
+          <Mjml lang={node.attrs.language}>
             <MjmlHead>
-              <MjmlTitle>{node.title}</MjmlTitle>
+              <MjmlTitle>{node.attrs.title}</MjmlTitle>
+              <MjmlAttributes>
+                <MjmlText lineHeight="1.2" padding="0" />
+                <MjmlSection padding="10px 0" />
+                <MjmlImage padding="0" />
+              </MjmlAttributes>
             </MjmlHead>
             <MjmlBody width="700px">{children}</MjmlBody>
           </Mjml>
-        </DocumentContext.Provider>
+        </RenderContext.Provider>
       );
   }
 }
 
 function Grid({ node }: { node: d.Grid }) {
-  const { format } = useContext(DocumentContext);
-  const children = node.children.map((child, index) => (
+  const { format } = useContext(RenderContext);
+  const children = node.content.map((child, index) => (
     <Section key={index} parent="grid" node={child} />
   ));
 
@@ -189,7 +151,7 @@ function Grid({ node }: { node: d.Grid }) {
     case 'pdf':
       return <ReactPDF.View style={styles.grid}>{children}</ReactPDF.View>;
     case 'mjml':
-      return <MjmlSection padding="10px 0">{children}</MjmlSection>;
+      return <MjmlSection>{children}</MjmlSection>;
   }
 }
 
@@ -200,9 +162,9 @@ function Section({
   node: d.Section;
   parent: 'document' | 'grid';
 }) {
-  const { format } = useContext(DocumentContext);
-  const textAlign = node.align ?? 'left';
-  const children = node.children.map((child, index) => (
+  const { format } = useContext(RenderContext);
+  const textAlign = node.attrs?.align ?? 'left';
+  const children = node.content.map((child, index) => (
     <Block key={index} align={textAlign} node={child} />
   ));
 
@@ -223,7 +185,7 @@ function Section({
         return <MjmlColumn>{children}</MjmlColumn>;
       } else {
         return (
-          <MjmlSection padding="10px 0">
+          <MjmlSection>
             <MjmlColumn>{children}</MjmlColumn>
           </MjmlSection>
         );
@@ -237,51 +199,54 @@ function Block({ node, align }: { node: d.Block; align?: d.Align }) {
       return <Paragraph node={node} align={align} />;
     case 'heading':
       return <Heading node={node} align={align} />;
-    case 'numbered-list':
-      return <NumberedList node={node} align={align} />;
-    case 'bulleted-list':
-      return <BulletedList node={node} align={align} />;
+    case 'orderedList':
+      return <OrderedList node={node} align={align} />;
+    case 'bulletList':
+      return <BulletList node={node} align={align} />;
     case 'image':
       return <Image node={node} align={align} />;
   }
 }
 
 function Inline({ node }: { node: d.Inline }) {
-  if ('text' in node) {
-    return <Text node={node} />;
-  }
+  const { format } = useContext(RenderContext);
   switch (node.type) {
-    case 'link':
-      return <Link node={node} />;
+    case 'text':
+      return <Text node={node} />;
     case 'tag':
+    case 'mention':
       return <Tag node={node} />;
+    case 'hardBreak':
+      return format == 'mjml' ? <br /> : '';
+    case 'image':
+      return <Image node={node} inline={true} />;
   }
 }
 
 function Heading({ node, align }: { node: d.Heading; align?: d.Align }) {
-  const { format } = useContext(DocumentContext);
-  const children = node.children.map((child, index) => (
+  const { format } = useContext(RenderContext);
+  const children = node.content.map((child, index) => (
     <Inline key={index} node={child} />
   ));
   switch (format) {
     case 'pdf':
       return (
-        <ReactPDF.Text style={headingStyle(node.level)}>
+        <ReactPDF.Text style={headingStyle(node.attrs.level)}>
           {children}
         </ReactPDF.Text>
       );
     case 'mjml':
       return (
         <MjmlText align={align}>
-          <HTMLHeading level={node.level}>{children}</HTMLHeading>
+          <HTMLHeading level={node.attrs.level}>{children}</HTMLHeading>
         </MjmlText>
       );
   }
 }
 
 function Paragraph({ node, align }: { node: d.Paragraph; align?: d.Align }) {
-  const { format } = useContext(DocumentContext);
-  const children = node.children.map((child, index) => (
+  const { format } = useContext(RenderContext);
+  const children = node.content.map((child, index) => (
     <Inline key={index} node={child} />
   ));
   switch (format) {
@@ -293,7 +258,7 @@ function Paragraph({ node, align }: { node: d.Paragraph; align?: d.Align }) {
       );
     case 'mjml':
       return (
-        <MjmlText align={align} lineHeight="1.2" padding="0">
+        <MjmlText align={align}>
           <p>{children}</p>
         </MjmlText>
       );
@@ -301,10 +266,10 @@ function Paragraph({ node, align }: { node: d.Paragraph; align?: d.Align }) {
 }
 
 function ListItem({ node }: { node: d.ListItem }) {
-  const { format } = useContext(DocumentContext);
-  const children = node.children.map((child, index) => (
-    <Inline key={index} node={child} />
-  ));
+  const { format } = useContext(RenderContext);
+  const children = node.content
+    .flatMap((child) => child.content)
+    .map((child, index) => <Inline key={index} node={child} />);
   switch (format) {
     case 'mjml':
       return <li>{children}</li>;
@@ -322,15 +287,15 @@ function ListItem({ node }: { node: d.ListItem }) {
   }
 }
 
-function NumberedList({
+function OrderedList({
   node,
   align,
 }: {
-  node: d.NumberedList;
+  node: d.OrderedList;
   align?: d.Align;
 }) {
-  const { format } = useContext(DocumentContext);
-  const children = node.children.map((child, index) => (
+  const { format } = useContext(RenderContext);
+  const children = node.content.map((child, index) => (
     <ListItem key={index} node={child} />
   ));
   switch (format) {
@@ -338,22 +303,16 @@ function NumberedList({
       return <ReactPDF.View style={styles.list}>{children}</ReactPDF.View>;
     case 'mjml':
       return (
-        <MjmlText align={align} padding="0">
+        <MjmlText align={align}>
           <ol>{children}</ol>
         </MjmlText>
       );
   }
 }
 
-function BulletedList({
-  node,
-  align,
-}: {
-  node: d.BulletedList;
-  align?: d.Align;
-}) {
-  const { format } = useContext(DocumentContext);
-  const children = node.children.map((child, index) => (
+function BulletList({ node, align }: { node: d.BulletList; align?: d.Align }) {
+  const { format } = useContext(RenderContext);
+  const children = node.content.map((child, index) => (
     <ListItem key={index} node={child} />
   ));
   switch (format) {
@@ -361,84 +320,98 @@ function BulletedList({
       return <ReactPDF.View style={styles.list}>{children}</ReactPDF.View>;
     case 'mjml':
       return (
-        <MjmlText align={align} padding="0">
+        <MjmlText align={align}>
           <ul>{children}</ul>
         </MjmlText>
       );
   }
 }
 
-function Image({ node, align }: { node: d.Image; align?: d.Align }) {
-  const { format, cache } = useContext(DocumentContext);
+function Image({
+  node,
+  align,
+  inline,
+}: {
+  node: d.Image;
+  align?: d.Align;
+  inline?: boolean;
+}) {
+  const { format, cache } = useContext(RenderContext);
   switch (format) {
     case 'pdf':
       return (
         <ReactPDF.Image
-          src={cache[node.src] ?? node.src}
-          style={{ width: node.width }}
+          src={cache[node.attrs.src] ?? node.attrs.src}
+          style={{ width: node.attrs.width }}
         />
       );
     case 'mjml':
-      return (
+      return inline ? (
+        <img
+          src={node.attrs.src}
+          alt={node.attrs.alt}
+          width={node.attrs.width}
+          height={node.attrs.height}
+        />
+      ) : (
         <MjmlImage
-          src={node.src}
-          padding="0"
-          width={node.width}
-          height={node.height}
+          src={node.attrs.src}
+          width={node.attrs.width}
+          height={node.attrs.height}
           align={align == 'justify' ? 'center' : align}
-          alt={node.alt ?? ''}
+          alt={node.attrs.alt ?? ''}
         />
       );
   }
 }
 
-function Text({ node }: { node: d.FormattedText }) {
-  const { format } = useContext(DocumentContext);
-  const textDecoration = node.underline ? 'underline' : undefined;
-  const backgroundColor = node.highlight ? '#ff0' : undefined;
-  const fontFamily =
-    node.bold && node.italic
-      ? 'Helvetica-BoldOblique'
-      : node.bold
-      ? 'Helvetica-Bold'
-      : node.italic
-      ? 'Helvetica-Oblique'
-      : 'Helvetica';
+function Text({ node }: { node: d.Text }) {
+  const { format } = useContext(RenderContext);
+  const mark = getMark(node.marks);
 
   switch (format) {
     case 'pdf':
+      if (mark.link) {
+        return (
+          <ReactPDF.Link src={mark.link.href} style={textMarkStyle(mark)}>
+            {node.text}
+          </ReactPDF.Link>
+        );
+      }
       return (
-        <ReactPDF.Text style={{ fontFamily, textDecoration, backgroundColor }}>
-          {node.text}
-        </ReactPDF.Text>
+        <ReactPDF.Text style={textMarkStyle(mark)}>{node.text}</ReactPDF.Text>
       );
     case 'mjml':
-      return <TextLines node={node} />;
-  }
-}
-
-function Link({ node }: { node: d.Link }) {
-  const { format } = useContext(DocumentContext);
-  const children = node.children.map((child, index) => (
-    <Inline key={index} node={child} />
-  ));
-  switch (format) {
-    case 'pdf':
-      return <ReactPDF.Link src={node.href}>{children}</ReactPDF.Link>;
-    case 'mjml':
-      return <a href={node.href}>{children}</a>;
+      return <FormattedText text={node.text} mark={mark} />;
   }
 }
 
 function Tag({ node }: { node: d.Tag }) {
-  const { tags, format } = useContext(DocumentContext);
-  const value = tags.find((tag) => tag.tag == node.tag)?.value ?? '';
+  const { tags, format, language } = useContext(RenderContext);
+  const mark = getMark(node.marks);
+  const tag = tags.find((tag) => tag.id == node.attrs.id);
+  const value = formatTagValue(language, tag);
+
   switch (format) {
     case 'pdf':
-      return value;
+      return <ReactPDF.Text style={textMarkStyle(mark)}>{value}</ReactPDF.Text>;
     case 'mjml':
-      return value;
+      return <FormattedText text={value} mark={mark} />;
   }
+}
+
+function formatTagValue(language: string, tag?: d.TagValue) {
+  if (tag?.value == null) {
+    return '';
+  }
+  if (Array.isArray(tag.value)) {
+    return formatters.getListFormat(language).format(tag.value);
+  }
+  switch (typeof tag.value) {
+    case 'number':
+      return formatters.getNumberFormat(language).format(tag.value);
+  }
+  return tag.value;
 }
 
 function headingStyle(level: number) {
@@ -469,6 +442,38 @@ function HTMLHeading({
   }
 }
 
+type Mark = {
+  bold?: boolean;
+  italic?: boolean;
+  underline?: boolean;
+  highlight?: boolean;
+  link?: d.Link['attrs'];
+};
+
+function getMark(marks?: d.Mark[]): Mark {
+  return Object.fromEntries(
+    (marks ?? []).map((mark) =>
+      mark.type == 'link' ? [mark.type, mark.attrs] : [mark.type, true]
+    )
+  );
+}
+
+function textMarkStyle(mark: Mark) {
+  const textDecoration =
+    mark.underline || mark.link ? ('underline' as const) : undefined;
+  const backgroundColor = mark.highlight ? '#ff0' : undefined;
+  const fontFamily =
+    mark.bold && mark.italic
+      ? 'Helvetica-BoldOblique'
+      : mark.bold
+      ? 'Helvetica-Bold'
+      : mark.italic
+      ? 'Helvetica-Oblique'
+      : 'Helvetica';
+
+  return { fontFamily, textDecoration, backgroundColor };
+}
+
 function TextLine({ text, last }: { text: string; last: boolean }) {
   if (last) {
     return text;
@@ -481,56 +486,36 @@ function TextLine({ text, last }: { text: string; last: boolean }) {
   );
 }
 
-function TextLines({ node }: { node: d.FormattedText }) {
-  const lines = node.text.split('\n');
+function FormattedText({ text, mark }: { text: string; mark: Mark }) {
+  const lines = text.split('\n');
   const lastIndex = lines.length - 1;
-  let text = (
+  let formattedText = (
     <>
-      {lines.map((text, index) => (
-        <TextLine key={index} text={text} last={index == lastIndex} />
+      {lines.map((line, index) => (
+        <TextLine key={index} text={line} last={index == lastIndex} />
       ))}
     </>
   );
-  if (node.bold) {
-    text = <strong>{text}</strong>;
-  }
-  if (node.italic) {
-    text = <em>{text}</em>;
-  }
-  if (node.underline) {
-    text = <u>{text}</u>;
-  }
-  if (node.highlight) {
-    text = <mark>{text}</mark>;
-  }
-  return text;
-}
 
-type Cache = Record<string, Buffer>;
-
-async function prefetchDocumentSVG(doc: d.Document) {
-  const cache: Cache = {};
-  for (const section of doc.children) {
-    for (const blockOrSection of section.children) {
-      if (blockOrSection.type == 'section') {
-        for (const block of blockOrSection.children) {
-          await prefetchSVG(block, cache);
-        }
-      } else {
-        await prefetchSVG(blockOrSection, cache);
-      }
-    }
+  if (mark.bold) {
+    formattedText = <strong>{formattedText}</strong>;
   }
-  return cache;
-}
-
-async function prefetchSVG(node: d.Block, cache: Cache) {
-  if (node.type == 'image' && node.src.endsWith('.svg') && !cache[node.src]) {
-    cache[node.src] = await svgToPng(node.src);
+  if (mark.italic) {
+    formattedText = <em>{formattedText}</em>;
   }
-}
+  if (mark.underline) {
+    formattedText = <u>{formattedText}</u>;
+  }
+  if (mark.highlight) {
+    formattedText = <mark>{formattedText}</mark>;
+  }
+  if (mark.link) {
+    formattedText = (
+      <a href={mark.link.href} rel={mark.link.rel} target={mark.link.target}>
+        {formattedText}
+      </a>
+    );
+  }
 
-async function svgToPng(src: string) {
-  const svg = await fetch(src).then((response) => response.arrayBuffer());
-  return sharp(Buffer.from(svg)).png().toBuffer();
+  return formattedText;
 }

@@ -1,27 +1,29 @@
 import { describe, it, expect } from 'bun:test';
-import { Value } from '@sinclair/typebox/value';
-import { Document } from './document';
+import { Doc } from './document';
 
 describe('Document', () => {
   it('should validate a document', () => {
-    const doc: Document = {
-      title: 'Title',
-      children: [
+    const doc: Doc = {
+      type: 'doc',
+      attrs: { title: 'Title' },
+      content: [
         {
           type: 'section',
-          children: [
+          content: [
             {
               type: 'paragraph',
-              children: [
+              content: [
                 {
+                  type: 'text',
                   text: 'Hello, world!',
                 },
                 {
-                  type: 'link',
-                  href: 'https://example.com',
-                  children: [
+                  type: 'text',
+                  text: 'Example',
+                  marks: [
                     {
-                      text: 'Example',
+                      type: 'link',
+                      attrs: { href: 'https://example.com' },
                     },
                   ],
                 },
@@ -29,14 +31,14 @@ describe('Document', () => {
             },
             {
               type: 'image',
-              src: 'https://example.com/picture.jpg',
+              attrs: { src: 'https://example.com/picture.jpg' },
             },
           ],
         },
       ],
     };
 
-    const result = Value.Check(Document, doc);
-    expect(result).toBe(true);
+    const result = Doc.safeParse(doc);
+    expect(result.success).toBe(true);
   });
 });

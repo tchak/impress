@@ -1,10 +1,11 @@
 import { Elysia, t } from 'elysia';
 import { bearer } from '@elysiajs/bearer';
-import { swagger } from '@elysiajs/swagger';
 import { staticPlugin } from '@elysiajs/static';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { z } from 'zod';
+import { fromZodError, ValidationError } from 'zod-validation-error';
 
-import { Document, Tags } from './document';
+import { Doc, Tags } from './document';
 import { Config } from './config';
 import { renderDocument } from './render';
 
@@ -20,17 +21,24 @@ class UnauthorizedError extends Error {
   }
 }
 
+const Body = z.object({
+  document: Doc,
+  tags: Tags.optional().default([]),
+  format: z.enum(['pdf', 'html', 'mjml', 'text']).default('html'),
+});
+
 const app = new Elysia()
   .use(bearer())
-  .use(swagger())
   .use(staticPlugin({ prefix: '' }))
   .error({
     BAD_REQUEST: BadRequestError,
     UNAUTHORIZED_REQUEST: UnauthorizedError,
+    VALIDATION_ERROR: ValidationError,
   })
   .onError(({ code, error }) => {
     switch (code) {
       case 'BAD_REQUEST':
+      case 'VALIDATION_ERROR':
         return new Response(error.message, { status: 400 });
       case 'UNAUTHORIZED_REQUEST':
         return new Response(error.message, { status: 401 });
@@ -54,35 +62,24 @@ const app = new Elysia()
   })
   .post(
     '/v1',
-    async ({ headers, body: { document, tags, ...options } }) => {
-      const format =
-        acceptToFormat(headers['accept']) ?? options?.format ?? 'html';
+    async ({ headers, body }) => {
+      const result = Body.safeParse(body);
+      if (result.success == false) {
+        const error = fromZodError(result.error);
+        throw error;
+      }
+      const format = acceptToFormat(headers['accept']) ?? result.data.format;
       const contentType = formatToContentType(format);
-      const doc = await renderDocument(document, tags ?? [], format);
+      const doc = await renderDocument(
+        result.data.document,
+        result.data.tags,
+        format
+      );
 
       return new Response(doc, { headers: { 'content-type': contentType } });
     },
     {
-      // beforeHandle({ bearer }) {
-      //   if (bearer !== Config.SECRET_TOKEN) {
-      //     throw new UnauthorizedError('Invalid token');
-      //   }
-      // },
-      body: t.Object({
-        document: Document,
-        tags: t.ReadonlyOptional(Tags),
-        format: t.ReadonlyOptional(
-          t.Union(
-            [
-              t.Literal('html'),
-              t.Literal('text'),
-              t.Literal('pdf'),
-              t.Literal('mjml'),
-            ],
-            { default: 'html' }
-          )
-        ),
-      }),
+      body: t.Unknown(),
     }
   )
   .listen(Config.PORT);

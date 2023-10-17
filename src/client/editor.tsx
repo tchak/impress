@@ -35,7 +35,7 @@ const tags = [
   { label: 'NUR', id: 'nur', defaultValue: '12345qwerty' },
 ];
 
-type Tags = { tag: string; value: string }[];
+type Tags = { id: string; value: string }[];
 
 const extensions = [
   Document,
@@ -148,99 +148,12 @@ const MenuBar = () => {
   );
 };
 
-type ImpressSection = {
-  type: 'section';
-  children: (ImpressParagraph | ImpressBulletedList)[];
-};
-
-type ImpressParagraph = {
-  type: 'paragraph';
-  children: ImpressInline[];
-};
-
-type ImpressListItem = {
-  type: 'list-item';
-  children: ImpressInline[];
-};
-
-type ImpressBulletedList = {
-  type: 'bulleted-list';
-  children: ImpressListItem[];
-};
-
-type ImpressInline =
-  | {
-      text: string;
-      italic?: boolean;
-      bold?: boolean;
-      underline?: boolean;
-      highlight?: boolean;
-    }
-  | { type: 'tag'; tag: string };
-
-function toImpressJSON(json: JSONContent): ImpressSection {
-  return {
-    type: 'section',
-    children: (json.content ?? []).map<ImpressParagraph | ImpressBulletedList>(
-      (content) => {
-        if (content.type == 'paragraph') {
-          return {
-            type: 'paragraph',
-            children: (content.content ?? []).map<ImpressInline>((content) => {
-              if (content.type == 'text' && content.text) {
-                return {
-                  text: content.text,
-                  ...Object.fromEntries(
-                    content.marks
-                      ?.filter((mark) => mark.type != 'link')
-                      .map((mark) => [mark.type, true]) ?? []
-                  ),
-                };
-              } else if (content.type == 'mention' && content.attrs?.id) {
-                return { type: 'tag', tag: content.attrs.id };
-              }
-              return { text: '' };
-            }),
-          };
-        } else if (content.type == 'bulletList') {
-          return {
-            type: 'bulleted-list',
-            children: (content.content ?? []).map<ImpressListItem>(
-              (content) => {
-                return {
-                  type: 'list-item',
-                  children: (
-                    content.content?.at(0)?.content ?? []
-                  ).map<ImpressInline>((content) => {
-                    if (content.type == 'text' && content.text) {
-                      return {
-                        text: content.text,
-                        ...Object.fromEntries(
-                          content.marks?.map((mark) => [mark.type, true]) ?? []
-                        ),
-                      };
-                    } else if (content.type == 'mention' && content.attrs?.id) {
-                      return { type: 'tag', tag: content.attrs.id };
-                    }
-                    return { text: '' };
-                  }),
-                };
-              }
-            ),
-          };
-        }
-        return { type: 'paragraph', children: [{ text: '' }] };
-      }
-    ),
-  };
-}
-
 const EditorJSONPreview = () => {
   const [file, setFile] = useState<Blob | null>(null);
   const { editor } = useCurrentEditor();
 
   const [tagValues, setTagValues] = useState<Tags>(
-    tags.map(({ id, defaultValue }) => ({ tag: id, value: defaultValue }))
+    tags.map(({ id, defaultValue }) => ({ id, value: defaultValue }))
   );
 
   return (
@@ -251,28 +164,40 @@ const EditorJSONPreview = () => {
             key={tag.id}
             label={tag.label}
             name={tag.id}
-            value={tagValues.find(({ tag: t }) => t == tag.id)?.value ?? ''}
+            value={tagValues.find(({ id }) => id == tag.id)?.value ?? ''}
             onChange={(value) => {
               setTagValues((tagValues) => [
-                ...tagValues.filter(({ tag: t }) => t != tag.id),
-                { tag: tag.id, value },
+                ...tagValues.filter(({ id }) => id != tag.id),
+                { id: tag.id, value },
               ]);
             }}
           />
         ))}
       </div>
-      <button
-        type="button"
-        className="rounded bg-white px-2 py-1 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
-        onClick={async () => {
-          const json = editor?.getJSON();
-          if (json) {
-            renderPDF(json, tagValues).then((blob) => setFile(blob));
-          }
-        }}
-      >
-        Render
-      </button>
+      <div className="flex gap-2">
+        <button
+          type="button"
+          className="rounded bg-white px-2 py-1 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+          onClick={async () => {
+            const json = editor?.getJSON();
+            if (json) {
+              renderPDF(json, tagValues).then((blob) => setFile(blob));
+            }
+          }}
+        >
+          Render
+        </button>
+        <button
+          type="button"
+          className="rounded bg-white px-2 py-1 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+          onClick={async () => {
+            setContent(defaultContent);
+            location.reload();
+          }}
+        >
+          Reset
+        </button>
+      </div>
       {file ? <PDFViewer file={file} /> : null}
     </div>
   );
@@ -372,11 +297,7 @@ const defaultContent: JSONContent = {
         },
         {
           type: 'text',
-          marks: [
-            {
-              type: 'italic',
-            },
-          ],
+          marks: [{ type: 'italic' }],
           text: 'situation',
         },
         {
@@ -385,11 +306,7 @@ const defaultContent: JSONContent = {
         },
         {
           type: 'text',
-          marks: [
-            {
-              type: 'bold',
-            },
-          ],
+          marks: [{ type: 'bold' }],
           text: 'Monsieur',
         },
         {
@@ -398,10 +315,7 @@ const defaultContent: JSONContent = {
         },
         {
           type: 'mention',
-          attrs: {
-            id: 'lastName',
-            label: 'Nom',
-          },
+          attrs: { id: 'lastName', label: 'Nom' },
         },
         {
           type: 'text',
@@ -409,10 +323,7 @@ const defaultContent: JSONContent = {
         },
         {
           type: 'mention',
-          attrs: {
-            id: 'nur',
-            label: 'NUR',
-          },
+          attrs: { id: 'nur', label: 'NUR' },
         },
         {
           type: 'text',
@@ -425,11 +336,7 @@ const defaultContent: JSONContent = {
       content: [
         {
           type: 'text',
-          marks: [
-            {
-              type: 'italic',
-            },
-          ],
+          marks: [{ type: 'italic' }],
           text: 'Informations :',
         },
       ],
@@ -439,11 +346,7 @@ const defaultContent: JSONContent = {
       content: [
         {
           type: 'text',
-          marks: [
-            {
-              type: 'italic',
-            },
-          ],
+          marks: [{ type: 'italic' }],
           text: 'Cette reconnaissance de priorité rend le dossier du requérant éligible au contingent préfectoral de logements sociaux réservé aux publics prioriatires.',
         },
       ],
@@ -453,11 +356,7 @@ const defaultContent: JSONContent = {
       content: [
         {
           type: 'text',
-          marks: [
-            {
-              type: 'italic',
-            },
-          ],
+          marks: [{ type: 'italic' }],
           text: "Dans ce cadre, une proposition de logement sera faites par les services de la DRIHL dès lors qu'ils disposeront d'un logement vacant correspondant aux besoins et aux capacités de la famille.",
         },
       ],
@@ -480,10 +379,13 @@ function setContent(content: JSONContent) {
 }
 
 function renderPDF(json: JSONContent, tags: Tags) {
-  const section = toImpressJSON(json);
   const doc = {
-    title: 'Attestation',
-    children: sections(section),
+    type: 'doc',
+    attrs: {
+      title: 'Attestation',
+      language: 'fr',
+    },
+    content: sections({ type: 'section', content: json.content }),
   };
   const body = JSON.stringify({
     document: doc,
@@ -497,23 +399,26 @@ function renderPDF(json: JSONContent, tags: Tags) {
   }).then((res) => res.blob());
 }
 
-function sections(section: ImpressSection) {
+function sections(section: JSONContent) {
   return [
     {
       type: 'grid',
-      children: [
+      content: [
         {
           type: 'section',
-          children: [
+          content: [
             {
               type: 'image',
-              src: 'https://upload.wikimedia.org/wikipedia/fr/5/50/Bloc_Marianne.svg',
-              width: 100,
+              attrs: {
+                src: 'https://upload.wikimedia.org/wikipedia/fr/5/50/Bloc_Marianne.svg',
+                width: 100,
+              },
             },
             {
               type: 'paragraph',
-              children: [
+              content: [
                 {
+                  type: 'text',
                   text: 'PRÉFET\nDU VAL-\nDE-MARNE',
                 },
               ],
@@ -522,14 +427,15 @@ function sections(section: ImpressSection) {
         },
         {
           type: 'section',
-          align: 'right',
-          children: [
+          attrs: { align: 'right' },
+          content: [
             {
               type: 'paragraph',
-              children: [
+              content: [
                 {
+                  type: 'text',
                   text: 'Direction Régionale et Interdépartementale\nde l’Hébergement et du Logement\nDRIHL Val-de-Marne',
-                  bold: true,
+                  marks: [{ type: 'bold' }],
                 },
               ],
             },
@@ -539,14 +445,15 @@ function sections(section: ImpressSection) {
     },
     {
       type: 'grid',
-      children: [
+      content: [
         {
           type: 'section',
-          children: [
+          content: [
             {
               type: 'paragraph',
-              children: [
+              content: [
                 {
+                  type: 'text',
                   text: 'Service Hébergement et Accès au Logement\nBureau de l’Accès au Logement',
                 },
               ],
@@ -555,12 +462,13 @@ function sections(section: ImpressSection) {
         },
         {
           type: 'section',
-          align: 'right',
-          children: [
+          attrs: { align: 'right' },
+          content: [
             {
               type: 'paragraph',
-              children: [
+              content: [
                 {
+                  type: 'text',
                   text: 'Créteil, le 20 mars 2023',
                 },
               ],
@@ -571,13 +479,14 @@ function sections(section: ImpressSection) {
     },
     {
       type: 'section',
-      align: 'center',
-      children: [
+      attrs: { align: 'center' },
+      content: [
         {
           type: 'heading',
-          level: 1,
-          children: [
+          attrs: { level: 1 },
+          content: [
             {
+              type: 'text',
               text: 'ATTESTATION',
             },
           ],
