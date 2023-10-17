@@ -18,6 +18,7 @@ import Highlight from '@tiptap/extension-highlight';
 import Underline from '@tiptap/extension-underline';
 import Bold from '@tiptap/extension-bold';
 import Italic from '@tiptap/extension-italic';
+import Link from '@tiptap/extension-link';
 import Mention from '@tiptap/extension-mention';
 import Typography from '@tiptap/extension-typography';
 
@@ -54,6 +55,12 @@ const extensions = [
   Underline,
   Bold,
   Italic,
+  Link.configure({
+    protocols: ['https'],
+    autolink: true,
+    linkOnPaste: true,
+    openOnClick: false,
+  }),
   Hystory,
 ];
 
@@ -184,7 +191,9 @@ function toImpressJSON(json: JSONContent): ImpressSection {
                 return {
                   text: content.text,
                   ...Object.fromEntries(
-                    content.marks?.map((mark) => [mark.type, true]) ?? []
+                    content.marks
+                      ?.filter((mark) => mark.type != 'link')
+                      .map((mark) => [mark.type, true]) ?? []
                   ),
                 };
               } else if (content.type == 'mention' && content.attrs?.id) {
