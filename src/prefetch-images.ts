@@ -9,7 +9,7 @@ export async function prefetchImages(
 ) {
   for (const node of content) {
     if (node.type == 'image') {
-      await prefetchSVG(node, cache);
+      await prefetchImage(node, cache);
     } else if ('content' in node && node.content.length > 0) {
       await prefetchImages(node.content, cache);
     }
@@ -17,13 +17,20 @@ export async function prefetchImages(
   return cache;
 }
 
-async function prefetchSVG(node: d.Image, cache: Cache) {
-  if (node.attrs.src.endsWith('.svg') && !cache[node.attrs.src]) {
-    cache[node.attrs.src] = await svgToPng(node.attrs.src);
+async function prefetchImage(node: d.Image, cache: Cache) {
+  if (!cache[node.attrs.src]) {
+    cache[node.attrs.src] = await fetchImage(node.attrs.src);
   }
 }
 
-async function svgToPng(src: string) {
-  const svg = await fetch(src).then((response) => response.arrayBuffer());
-  return sharp(Buffer.from(svg)).png().toBuffer();
+async function fetchImage(src: string) {
+  const buffer = await fetch(src)
+    .then((response) => response.arrayBuffer())
+    .then((array) => Buffer.from(array));
+
+  if (src.endsWith('.svg')) {
+    return sharp(buffer).png().toBuffer();
+  }
+
+  return buffer;
 }
