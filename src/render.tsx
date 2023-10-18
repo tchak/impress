@@ -119,13 +119,17 @@ export function Doc({
             title={node.attrs.title}
           >
             <ReactPDF.Page size="A4" style={styles.page}>
-              {sections.map((node) => {
+              {sections.map((node, index) => {
                 if (Array.isArray(node)) {
-                  return node.map((node, index) => (
-                    <Block key={index} node={node} depth={0} />
+                  return node.map((node, columnIndex) => (
+                    <Block
+                      key={`${index}-${columnIndex}`}
+                      node={node}
+                      depth={0}
+                    />
                   ));
                 }
-                return <Grid node={node} />;
+                return <Grid key={index} node={node} />;
               })}
               <ReactPDF.Text
                 style={styles.pageNumbers}
@@ -151,19 +155,23 @@ export function Doc({
               </MjmlAttributes>
             </MjmlHead>
             <MjmlBody width="700px">
-              {sections.map((node) => {
+              {sections.map((node, index) => {
                 if (Array.isArray(node)) {
                   return (
-                    <MjmlSection>
+                    <MjmlSection key={index}>
                       <MjmlColumn>
-                        {node.map((node, index) => (
-                          <Block key={index} node={node} depth={0} />
+                        {node.map((node, columnIndex) => (
+                          <Block
+                            key={`${index}-${columnIndex}`}
+                            node={node}
+                            depth={0}
+                          />
                         ))}
                       </MjmlColumn>
                     </MjmlSection>
                   );
                 }
-                return <Grid node={node} />;
+                return <Grid key={index} node={node} />;
               })}
             </MjmlBody>
           </Mjml>
