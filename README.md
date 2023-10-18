@@ -16,7 +16,7 @@ To use:
 
 ```bash
 curl --request POST \
-  --url https://impress.tchak.dev/v1 \
+  --url http://localhost:8080/v1 \
   --header 'Content-Type: application/json' \
   --data '{
   "document": {
