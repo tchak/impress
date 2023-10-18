@@ -1,5 +1,13 @@
 import { z } from 'zod';
 
+const Align = z.enum(['left', 'center', 'right', 'justify']);
+
+export const TagValue = z.object({
+  id: z.string(),
+  value: z.union([z.string(), z.number(), z.string().array()]),
+});
+export const Tags = TagValue.array();
+
 const Link = z.object({
   type: z.literal('link'),
   attrs: z.object({
@@ -31,26 +39,20 @@ const Tag = z.object({
 
 const HardBreak = z.object({ type: z.literal('hardBreak') });
 
-const Image = z.object({
-  type: z.literal('image'),
-  attrs: z.object({
-    src: z.string(),
-    alt: z.string().optional(),
-    width: z.number().int().min(1).optional(),
-    height: z.number().int().min(1).optional(),
-  }),
-});
-
-const Inline = z.discriminatedUnion('type', [Text, Image, Tag, HardBreak]);
+const Inline = z.discriminatedUnion('type', [Text, Tag, HardBreak]);
 
 const Heading = z.object({
   type: z.literal('heading'),
-  attrs: z.object({ level: z.number().int().min(1).max(3) }),
+  attrs: z.object({
+    level: z.number().int().min(1).max(3),
+    textAlign: Align.optional(),
+  }),
   content: Inline.array(),
 });
 
 const Paragraph = z.object({
   type: z.literal('paragraph'),
+  attrs: z.object({ textAlign: Align }).optional(),
   content: Inline.array(),
 });
 
@@ -76,9 +78,18 @@ const BulletList: z.ZodType<BulletList> = z.object({
   content: ListItem.array(),
 });
 
-const Block = z.union([Heading, Paragraph, OrderedList, BulletList, Image]);
+const Image = z.object({
+  type: z.literal('image'),
+  attrs: z.object({
+    src: z.string(),
+    alt: z.string().optional(),
+    title: z.string().optional(),
+    width: z.number().int().min(1).optional(),
+    height: z.number().int().min(1).optional(),
+  }),
+});
 
-const Align = z.enum(['left', 'center', 'right', 'justify']);
+const Block = z.union([Heading, Paragraph, OrderedList, BulletList, Image]);
 
 const Section = z.object({
   type: z.literal('section'),
@@ -100,14 +111,8 @@ export const Doc = z.object({
   content: z.discriminatedUnion('type', [Section, Grid]).array(),
 });
 
-export const TagValue = z.object({
-  id: z.string(),
-  value: z.union([z.string(), z.number(), z.string().array()]),
-});
 export type TagValue = z.infer<typeof TagValue>;
-export const Tags = TagValue.array();
 export type Tags = z.infer<typeof Tags>;
-
 export type Text = z.infer<typeof Text>;
 export type Tag = z.infer<typeof Tag>;
 export type Image = z.infer<typeof Image>;

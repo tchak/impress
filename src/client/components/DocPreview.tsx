@@ -3,12 +3,13 @@ import { useCurrentEditor, type JSONContent } from '@tiptap/react';
 import { useState } from 'react';
 
 import { PDFViewer } from './PDFViewer';
+import { HTMLViewer } from './HTMLViewer';
 import { withLayout } from './content';
 
 export type Tag = { label: string; id: string; defaultValue: string };
 type TagValue = { id: string; value: string };
 
-export function PDFPreview({
+export function DocPreview({
   tags,
   resetContent,
 }: {
@@ -16,6 +17,7 @@ export function PDFPreview({
   resetContent: () => void;
 }) {
   const [file, setFile] = useState<Blob | null>(null);
+  const [html, setHTML] = useState<string | null>(null);
   const { editor } = useCurrentEditor();
 
   const [tagValues, setTagValues] = useState<TagValue[]>(
@@ -24,7 +26,7 @@ export function PDFPreview({
 
   return (
     <div className="ml-2">
-      <div className="flex flex-col gap-2 mb-2">
+      <div className="flex flex-col gap-2 mb-2 max-w-[20rem]">
         {tags.map((tag) => (
           <Input
             key={tag.id}
@@ -47,11 +49,29 @@ export function PDFPreview({
           onClick={async () => {
             const json = editor?.getJSON();
             if (json) {
-              renderPDF(json, tagValues).then((blob) => setFile(blob));
+              renderDoc(json, tagValues, 'pdf').then((blob) => {
+                setFile(blob);
+                setHTML(null);
+              });
             }
           }}
         >
-          Render
+          Render (PDF)
+        </button>
+        <button
+          type="button"
+          className="rounded bg-white px-2 py-1 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+          onClick={async () => {
+            const json = editor?.getJSON();
+            if (json) {
+              renderDoc(json, tagValues, 'html').then((html) => {
+                setHTML(html);
+                setFile(null);
+              });
+            }
+          }}
+        >
+          Render (HTML)
         </button>
         <button
           type="button"
@@ -65,6 +85,7 @@ export function PDFPreview({
         </button>
       </div>
       {file ? <PDFViewer file={file} /> : null}
+      {html ? <HTMLViewer html={html} /> : null}
     </div>
   );
 }
@@ -102,7 +123,21 @@ function Input({
   );
 }
 
-function renderPDF(json: JSONContent, tags: TagValue[]) {
+function renderDoc(
+  json: JSONContent,
+  tags: TagValue[],
+  format: 'pdf'
+): Promise<Blob>;
+function renderDoc(
+  json: JSONContent,
+  tags: TagValue[],
+  format: 'html'
+): Promise<string>;
+function renderDoc(
+  json: JSONContent,
+  tags: TagValue[],
+  format: 'pdf' | 'html'
+) {
   const doc = {
     type: 'doc',
     attrs: {
@@ -114,11 +149,11 @@ function renderPDF(json: JSONContent, tags: TagValue[]) {
   const body = JSON.stringify({
     document: doc,
     tags,
-    format: 'pdf',
+    format,
   });
   return fetch('/v1', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body,
-  }).then((res) => res.blob());
+  }).then<Blob | string>((res) => (format == 'pdf' ? res.blob() : res.text()));
 }

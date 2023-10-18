@@ -84,6 +84,53 @@ export function MenuBar() {
       <div>
         <button
           type="button"
+          onClick={() => editor.chain().focus().setTextAlign('left').run()}
+          className={`relative inline-flex items-center rounded-l-md px-3 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300 focus:z-10 ${
+            editor.isActive({ textAlign: 'left' })
+              ? 'bg-blue-200 hover:bg-blue-50'
+              : 'bg-white hover:bg-gray-50'
+          }`}
+        >
+          left
+        </button>
+        <button
+          type="button"
+          onClick={() => editor.chain().focus().setTextAlign('center').run()}
+          className={`relative -ml-px inline-flex items-center px-3 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300 focus:z-10 ${
+            editor.isActive({ textAlign: 'center' })
+              ? 'bg-blue-200 hover:bg-blue-50'
+              : 'bg-white hover:bg-gray-50'
+          }`}
+        >
+          center
+        </button>
+        <button
+          type="button"
+          onClick={() => editor.chain().focus().setTextAlign('right').run()}
+          className={`relative -ml-px inline-flex items-center px-3 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300 focus:z-10 ${
+            editor.isActive({ textAlign: 'right' })
+              ? 'bg-blue-200 hover:bg-blue-50'
+              : 'bg-white hover:bg-gray-50'
+          }`}
+        >
+          right
+        </button>
+        <button
+          type="button"
+          onClick={() => editor.chain().focus().setTextAlign('justify').run()}
+          className={`relative -ml-px inline-flex items-center rounded-r-md px-3 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300 focus:z-10 ${
+            editor.isActive({ textAlign: 'justify' })
+              ? 'bg-blue-200 hover:bg-blue-50'
+              : 'bg-white hover:bg-gray-50'
+          }`}
+        >
+          justify
+        </button>
+      </div>
+
+      <div>
+        <button
+          type="button"
           className="relative inline-flex items-center rounded-l-md px-3 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300 focus:z-10 bg-white hover:bg-gray-50"
           onClick={() => editor.chain().focus().undo().run()}
           disabled={!editor.can().chain().focus().undo().run()}

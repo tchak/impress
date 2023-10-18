@@ -220,8 +220,6 @@ function Inline({ node }: { node: d.Inline }) {
       return <Tag node={node} />;
     case 'hardBreak':
       return format == 'mjml' ? <br /> : '';
-    case 'image':
-      return <Image node={node} depth={1} />;
   }
 }
 
@@ -235,13 +233,16 @@ function Heading({
   align?: d.Align;
 }) {
   const { format } = useContext(RenderContext);
+  const textAlign = node.attrs?.textAlign ?? 'left';
   const children = node.content.map((child, index) => (
     <Inline key={index} node={child} />
   ));
   switch (format) {
     case 'pdf':
       return (
-        <ReactPDF.Text style={headingStyle(node.attrs.level)}>
+        <ReactPDF.Text
+          style={headingStyle(node.attrs.level, align ?? textAlign)}
+        >
           {children}
         </ReactPDF.Text>
       );
@@ -250,7 +251,7 @@ function Heading({
         return <HTMLHeading level={node.attrs.level}>{children}</HTMLHeading>;
       }
       return (
-        <MjmlText align={align}>
+        <MjmlText align={align ?? textAlign}>
           <HTMLHeading level={node.attrs.level}>{children}</HTMLHeading>
         </MjmlText>
       );
@@ -267,6 +268,7 @@ function Paragraph({
   align?: d.Align;
 }) {
   const { format } = useContext(RenderContext);
+  const textAlign = align ?? node.attrs?.textAlign ?? 'left';
   const children = node.content.map((child, index) => (
     <Inline key={index} node={child} />
   ));
@@ -276,7 +278,8 @@ function Paragraph({
         <ReactPDF.Text
           style={[
             styles.text,
-            depth > 0 ? { paddingBottom: 5 } : { paddingBottom: 30 },
+            depth > 0 ? { paddingBottom: 5 } : { paddingBottom: 20 },
+            { textAlign },
           ]}
         >
           {children}
@@ -287,7 +290,7 @@ function Paragraph({
         return <p>{children}</p>;
       }
       return (
-        <MjmlText align={align}>
+        <MjmlText align={align ?? textAlign}>
           <p>{children}</p>
         </MjmlText>
       );
@@ -459,14 +462,14 @@ function formatTagValue(language: string, tag?: d.TagValue) {
   return tag.value;
 }
 
-function headingStyle(level: number) {
+function headingStyle(level: number, textAlign: d.Align) {
   switch (level) {
     case 1:
-      return styles.h1;
+      return [styles.h1, { textAlign }];
     case 2:
-      return styles.h2;
+      return [styles.h2, { textAlign }];
     case 3:
-      return styles.h3;
+      return [styles.h3, { textAlign }];
   }
 }
 

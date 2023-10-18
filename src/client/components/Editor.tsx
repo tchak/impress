@@ -2,6 +2,8 @@ import { EditorProvider } from '@tiptap/react';
 
 import Document from '@tiptap/extension-document';
 import Hystory from '@tiptap/extension-history';
+import TextAlign from '@tiptap/extension-text-align';
+import Gapcursor from '@tiptap/extension-gapcursor';
 
 import Paragraph from '@tiptap/extension-paragraph';
 import Heading from '@tiptap/extension-heading';
@@ -21,7 +23,7 @@ import Typography from '@tiptap/extension-typography';
 import { createSuggestion } from './suggestion';
 import { getContent, setContent, resetContent } from './content';
 import { MenuBar } from './MenuBar';
-import { PDFPreview, type Tag } from './PDFPreview';
+import { DocPreview, type Tag } from './DocPreview';
 
 export function Editor({ tags }: { tags: Tag[] }) {
   const extensions = [
@@ -50,6 +52,10 @@ export function Editor({ tags }: { tags: Tag[] }) {
       openOnClick: false,
     }),
     Hystory,
+    Gapcursor,
+    TextAlign.configure({
+      types: ['heading', 'paragraph'],
+    }),
   ];
 
   return (
@@ -57,13 +63,14 @@ export function Editor({ tags }: { tags: Tag[] }) {
       editorProps={{
         attributes: {
           class:
-            'prose prose-sm sm:prose-base p-2 m-2 focus:outline-none border-gray-300 border rounded-md min-h-[30rem]',
+            'prose prose-sm sm:prose-base p-2 m-2 focus:outline-none border-gray-300 border rounded-md min-h-[30rem] w-full',
         },
       }}
+      autofocus
       extensions={extensions}
       content={getContent()}
       slotBefore={<MenuBar />}
-      slotAfter={<PDFPreview tags={tags} resetContent={resetContent} />}
+      slotAfter={<DocPreview tags={tags} resetContent={resetContent} />}
       onUpdate={({ editor }) => {
         const content = editor.getJSON();
         setContent(content);
