@@ -5,35 +5,30 @@ describe('Document', () => {
   it('should validate a document', () => {
     const doc: Doc = {
       type: 'doc',
-      attrs: { title: 'Title' },
+      attrs: { title: 'Title', language: 'en' },
       content: [
         {
-          type: 'section',
+          type: 'paragraph',
           content: [
             {
-              type: 'paragraph',
-              content: [
+              type: 'text',
+              text: 'Hello, world!',
+            },
+            {
+              type: 'text',
+              text: 'Example',
+              marks: [
                 {
-                  type: 'text',
-                  text: 'Hello, world!',
-                },
-                {
-                  type: 'text',
-                  text: 'Example',
-                  marks: [
-                    {
-                      type: 'link',
-                      attrs: { href: 'https://example.com' },
-                    },
-                  ],
+                  type: 'link',
+                  attrs: { href: 'https://example.com' },
                 },
               ],
             },
-            {
-              type: 'image',
-              attrs: { src: 'https://example.com/picture.jpg' },
-            },
           ],
+        },
+        {
+          type: 'image',
+          attrs: { src: 'https://example.com/picture.jpg' },
         },
       ],
     };

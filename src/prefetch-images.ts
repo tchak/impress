@@ -4,7 +4,7 @@ import type * as d from './document';
 export type Cache = Record<string, Buffer>;
 
 export async function prefetchImages(
-  content: (d.Block | d.Section | d.Grid | d.ListItem | d.Inline)[],
+  content: (d.Block | d.Column | d.Grid | d.ListItem | d.Inline)[],
   cache: Cache = {}
 ) {
   for (const node of content) {

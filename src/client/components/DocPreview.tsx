@@ -144,7 +144,7 @@ function renderDoc(
       title: 'Attestation',
       language: 'fr',
     },
-    content: withLayout({ type: 'section', content: json.content }),
+    content: withLayout(json),
   };
   const body = JSON.stringify({
     document: doc,

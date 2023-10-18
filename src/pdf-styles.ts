@@ -7,17 +7,22 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 35,
     fontFamily: 'Helvetica',
     display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'flex-start',
+    gap: 10,
   },
-  section: {
+  column: {
     display: 'flex',
     flexDirection: 'column',
     justifyContent: 'flex-start',
     gap: 10,
+    flex: 1,
     paddingBottom: 30,
   },
   grid: {
     display: 'flex',
     flexDirection: 'row',
+    paddingBottom: 30,
   },
   text: {
     lineHeight: 1.4,

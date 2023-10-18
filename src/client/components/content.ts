@@ -97,13 +97,13 @@ export function resetContent() {
   setContent(initialContent);
 }
 
-export function withLayout(section: JSONContent) {
+export function withLayout(doc: JSONContent) {
   return [
     {
       type: 'grid',
       content: [
         {
-          type: 'section',
+          type: 'column',
           content: [
             {
               type: 'image',
@@ -124,11 +124,11 @@ export function withLayout(section: JSONContent) {
           ],
         },
         {
-          type: 'section',
-          attrs: { align: 'right' },
+          type: 'column',
           content: [
             {
               type: 'paragraph',
+              attrs: { textAlign: 'right' },
               content: [
                 {
                   type: 'text',
@@ -145,7 +145,7 @@ export function withLayout(section: JSONContent) {
       type: 'grid',
       content: [
         {
-          type: 'section',
+          type: 'column',
           content: [
             {
               type: 'paragraph',
@@ -159,11 +159,11 @@ export function withLayout(section: JSONContent) {
           ],
         },
         {
-          type: 'section',
-          attrs: { align: 'right' },
+          type: 'column',
           content: [
             {
               type: 'paragraph',
+              attrs: { textAlign: 'right' },
               content: [
                 {
                   type: 'text',
@@ -176,21 +176,15 @@ export function withLayout(section: JSONContent) {
       ],
     },
     {
-      type: 'section',
-      attrs: { align: 'center' },
+      type: 'heading',
+      attrs: { level: 1, textAlign: 'center' },
       content: [
         {
-          type: 'heading',
-          attrs: { level: 1 },
-          content: [
-            {
-              type: 'text',
-              text: 'ATTESTATION',
-            },
-          ],
+          type: 'text',
+          text: 'ATTESTATION',
         },
       ],
     },
-    section,
+    ...(doc.content ?? []),
   ];
 }

@@ -86,43 +86,43 @@ const Image = z.object({
     title: z.string().optional(),
     width: z.number().int().min(1).optional(),
     height: z.number().int().min(1).optional(),
+    textAlign: Align.optional(),
   }),
 });
 
 const Block = z.union([Heading, Paragraph, OrderedList, BulletList, Image]);
 
-const Section = z.object({
-  type: z.literal('section'),
-  attrs: z.object({ align: Align.optional() }).optional(),
+const Column = z.object({
+  type: z.literal('column'),
   content: Block.array(),
 });
 
 const Grid = z.object({
   type: z.literal('grid'),
-  content: Section.array(),
+  content: Column.array(),
 });
 
 export const Doc = z.object({
   type: z.literal('doc'),
   attrs: z.object({
-    language: z.string().default('en'),
+    language: z.string().optional(),
     title: z.string(),
   }),
-  content: z.discriminatedUnion('type', [Section, Grid]).array(),
+  content: z.union([Grid, Block]).array(),
 });
 
 export type TagValue = z.infer<typeof TagValue>;
 export type Tags = z.infer<typeof Tags>;
 export type Text = z.infer<typeof Text>;
 export type Tag = z.infer<typeof Tag>;
-export type Image = z.infer<typeof Image>;
-export type Link = z.infer<typeof Link>;
-export type Inline = z.infer<typeof Inline>;
-export type Heading = z.infer<typeof Heading>;
-export type Paragraph = z.infer<typeof Paragraph>;
-export type Block = z.infer<typeof Block>;
-export type Section = z.infer<typeof Section>;
 export type Align = z.infer<typeof Align>;
+export type Link = z.infer<typeof Link>;
 export type Mark = z.infer<typeof Mark>;
-export type Grid = z.infer<typeof Grid>;
+export type Inline = z.infer<typeof Inline>;
 export type Doc = z.infer<typeof Doc>;
+export type Grid = z.infer<typeof Grid>;
+export type Column = z.infer<typeof Column>;
+export type Block = z.infer<typeof Block>;
+export type Paragraph = z.infer<typeof Paragraph>;
+export type Heading = z.infer<typeof Heading>;
+export type Image = z.infer<typeof Image>;
