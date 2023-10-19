@@ -460,6 +460,8 @@ type Mark = {
   italic?: boolean;
   underline?: boolean;
   highlight?: boolean;
+  strike?: boolean;
+  code?: boolean;
   link?: d.Link['attrs'];
 };
 
@@ -510,6 +512,9 @@ function FormattedText({ text, mark }: { text: string; mark: Mark }) {
     </>
   );
 
+  if (mark.code) {
+    formattedText = <code>{formattedText}</code>;
+  }
   if (mark.bold) {
     formattedText = <strong>{formattedText}</strong>;
   }
@@ -518,6 +523,9 @@ function FormattedText({ text, mark }: { text: string; mark: Mark }) {
   }
   if (mark.underline) {
     formattedText = <u>{formattedText}</u>;
+  }
+  if (mark.strike) {
+    formattedText = <s>{formattedText}</s>;
   }
   if (mark.highlight) {
     formattedText = <mark>{formattedText}</mark>;

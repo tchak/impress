@@ -34,6 +34,17 @@ export function MenuBar() {
         </button>
         <button
           type="button"
+          onClick={() => editor.chain().focus().toggleCode().run()}
+          className={`relative -ml-px inline-flex items-center px-3 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300 focus:z-10 ${
+            editor.isActive('code')
+              ? 'bg-blue-200 hover:bg-blue-50'
+              : 'bg-white hover:bg-gray-50'
+          }`}
+        >
+          code
+        </button>
+        <button
+          type="button"
           onClick={() => editor.chain().focus().toggleUnderline().run()}
           className={`relative -ml-px inline-flex items-center px-3 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300 focus:z-10 ${
             editor.isActive('underline')
@@ -42,6 +53,17 @@ export function MenuBar() {
           }`}
         >
           underline
+        </button>
+        <button
+          type="button"
+          onClick={() => editor.chain().focus().toggleStrike().run()}
+          className={`relative -ml-px inline-flex items-center px-3 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300 focus:z-10 ${
+            editor.isActive('strike')
+              ? 'bg-blue-200 hover:bg-blue-50'
+              : 'bg-white hover:bg-gray-50'
+          }`}
+        >
+          strike
         </button>
         <button
           type="button"

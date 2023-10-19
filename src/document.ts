@@ -22,6 +22,8 @@ const Mark = z.discriminatedUnion('type', [
   z.object({ type: z.literal('italic') }),
   z.object({ type: z.literal('underline') }),
   z.object({ type: z.literal('highlight') }),
+  z.object({ type: z.literal('strike') }),
+  z.object({ type: z.literal('code') }),
   Link,
 ]);
 

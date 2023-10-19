@@ -17,6 +17,8 @@ import Underline from '@tiptap/extension-underline';
 import Bold from '@tiptap/extension-bold';
 import Italic from '@tiptap/extension-italic';
 import Link from '@tiptap/extension-link';
+import Code from '@tiptap/extension-code';
+import Strike from '@tiptap/extension-strike';
 import Mention from '@tiptap/extension-mention';
 import Typography from '@tiptap/extension-typography';
 
@@ -45,6 +47,8 @@ export function Editor({ tags }: { tags: Tag[] }) {
     Underline,
     Bold,
     Italic,
+    Code,
+    Strike,
     Link.configure({
       protocols: ['https'],
       autolink: true,
